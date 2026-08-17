@@ -15,11 +15,9 @@ jobs:
         job: [build, test, typecheck]
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v5
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24.4.0
-          cache: "pnpm"
+          bun-version: 1.3.14
       
       - name: Install Nixpacks
         if: matrix.job == 'test'
@@ -46,6 +44,6 @@ jobs:
           docker network create --driver overlay dokploy-network || true
           echo "✅ Docker Swarm initialized"
       
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm server:build
-      - run: pnpm ${{ matrix.job }}
+      - run: bun install --frozen-lockfile
+      - run: bun run server:build
+      - run: bun run ${{ matrix.job }}

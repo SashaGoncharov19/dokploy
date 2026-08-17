@@ -183,6 +183,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      # pnpm and Node stay available for the dokploy/{mcp,cli,sdk} repos cloned
+      # below — those are separate projects and still use pnpm. This repo uses bun.
       - uses: pnpm/action-setup@v4
         with:
           version: 10.22.0
@@ -190,12 +196,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.4.0
-          cache: pnpm
 
       - name: Generate OpenAPI specification
         run: |
-          pnpm install --frozen-lockfile
-          pnpm generate:openapi
+          bun install --frozen-lockfile
+          bun run generate:openapi
 
       - name: Sync version to MCP repository
         run: |
