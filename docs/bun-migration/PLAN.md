@@ -250,9 +250,27 @@ bun build ./server/server.ts ./migration.ts ./wait-for-postgres.ts \
   --target=bun --outdir=dist --minify --sourcemap --packages=external
 ```
 
-Two behavioral notes:
-- Output extension becomes `.js`, not `.mjs`. Update `apps/dokploy/package.json` `start` and the Dockerfile `CMD` together, or the container will fail to boot.
-- The `define` block inlining `.env.production` (minus `DATABASE_URL`) can be **dropped entirely** — Bun reads `.env` at runtime, which is what the `DATABASE_URL` exception was already working around. Verify no build-time-only env var is relied upon before removing.
+**As implemented**, this is a `Bun.build()` script (`apps/dokploy/scripts/build-server.ts`)
+rather than a CLI invocation, and it differs from the sketch above in two ways:
+
+- **Output keeps the `.mjs` extension**, via `naming: { entry: "[name].mjs" }`. The sketch
+  proposed moving to `.js` and updating the Dockerfile `CMD` plus five package.json
+  scripts to match. Keeping `.mjs` avoids all of that: smaller diff, one less way to
+  break the container boot, and less to conflict on when merging upstream.
+- **`target: "node"`, not `"bun"`.** This phase swaps the bundler only; the runtime moves
+  in Phase 4, and the two should not be entangled.
+
+The `define` block inlining `.env.production` was **dropped entirely**. It existed because
+Node does not read `.env` on its own; Bun does, the Docker image already ships `.env`, and
+`node -r dotenv/config` covers the interim. Baking build-machine values into the bundle
+was redundant and worse than reading them where they are used. This also removed the
+script's `dotenv` import and the two `@ts-ignore` comments the old config carried.
+
+⚠️ **Do not add `@types/bun` to `apps/dokploy`.** Pulling `bun-types` into that program
+rewrites the global `fetch` type (it gains `preconnect`) and breaks the fetch mocks in
+`__test__/dns/cloudflare.test.ts` and `__test__/env/vault.test.ts`. The build script is
+instead listed in `tsconfig.json` `exclude`, alongside `migration.ts` and `setup.ts`,
+which is the convention the repo already uses for ops scripts.
 
 ### 3.2 `apps/api` and `apps/schedules`
 
