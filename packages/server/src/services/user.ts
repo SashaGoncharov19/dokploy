@@ -8,7 +8,7 @@ import {
 	user,
 } from "@dokploy/server/db/schema";
 import { TRPCError } from "@trpc/server";
-import * as bcrypt from "bcrypt";
+import { hashPasswordSync } from "../lib/password";
 import { and, desc, eq } from "drizzle-orm";
 import { auth } from "../lib/auth";
 
@@ -465,7 +465,7 @@ export const createOrganizationUserWithCredentials = async ({
 		await tx.insert(account).values({
 			userId: createdUser.id,
 			providerId: "credential",
-			password: bcrypt.hashSync(password, 10),
+			password: hashPasswordSync(password),
 			createdAt: now,
 			updatedAt: now,
 		});

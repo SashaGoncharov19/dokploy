@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import { hashPassword } from "../lib/password";
 
 export const generateRandomPassword = async () => {
 	const passwordLength = 16;
@@ -13,8 +13,6 @@ export const generateRandomPassword = async () => {
 		);
 	}
 
-	const saltRounds = 10;
-
-	const hashedPassword = await bcrypt.hash(randomPassword, saltRounds);
+	const hashedPassword = await hashPassword(randomPassword);
 	return { randomPassword, hashedPassword };
 };

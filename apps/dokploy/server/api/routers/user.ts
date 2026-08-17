@@ -33,7 +33,7 @@ import {
 } from "@dokploy/server/services/permission";
 import { hasValidLicense } from "@dokploy/server/services/proprietary/license-key";
 import { TRPCError } from "@trpc/server";
-import * as bcrypt from "bcrypt";
+import { hashPasswordSync, verifyPasswordSync } from "@dokploy/server";
 import { and, asc, desc, eq, gt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { apiKeyNameSchema } from "@/lib/api-keys";
@@ -234,7 +234,7 @@ export const userRouter = createTRPCRouter({
 				const currentAuth = await db.query.account.findFirst({
 					where: eq(account.userId, ctx.user.id),
 				});
-				const correctPassword = bcrypt.compareSync(
+				const correctPassword = verifyPasswordSync(
 					input.currentPassword || "",
 					currentAuth?.password || "",
 				);
@@ -255,7 +255,7 @@ export const userRouter = createTRPCRouter({
 				await db
 					.update(account)
 					.set({
-						password: bcrypt.hashSync(input.password, 10),
+						password: hashPasswordSync(input.password),
 					})
 					.where(eq(account.userId, ctx.user.id));
 

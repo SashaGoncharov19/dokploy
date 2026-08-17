@@ -3,7 +3,6 @@ import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
 import { scim } from "@better-auth/scim";
 import { sso } from "@better-auth/sso";
-import * as bcrypt from "bcrypt";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
@@ -31,6 +30,7 @@ import {
 import { getPublicIpWithFallback } from "../wss/utils";
 import { ac, adminRole, memberRole, ownerRole } from "./access-control";
 import { betterAuthSecret } from "./auth-secret";
+import { hashPasswordSync, verifyPasswordSync } from "./password";
 
 const resolveTrustedOrigins = async () => {
 	try {
@@ -148,10 +148,10 @@ const createBetterAuth = () =>
 				IS_CLOUD && process.env.NODE_ENV === "production",
 			password: {
 				async hash(password) {
-					return bcrypt.hashSync(password, 10);
+					return hashPasswordSync(password);
 				},
 				async verify({ hash, password }) {
-					return bcrypt.compareSync(password, hash);
+					return verifyPasswordSync(password, hash);
 				},
 			},
 			sendResetPassword: async ({ user, url }) => {
