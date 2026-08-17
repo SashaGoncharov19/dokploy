@@ -131,12 +131,15 @@ work sped up. `test` and `typecheck` improved, but not yet by enough to claim.
 
 ### Dependencies and code removed
 
-Removed so far: `tsx` (×4), `rimraf` (×3), `esbuild` + `esbuild-plugin-alias`,
-`tsc-alias`. Seven files and **18,678 lines** deleted, including `pnpm-lock.yaml`,
+Removed: `tsx` (×4), `rimraf` (×3), `esbuild` + `esbuild-plugin-alias`, `tsc-alias`,
+`node-pty`, `bcrypt`, `postgres`, `@hono/node-server`, `redis`, `ioredis`, and `dotenv`
+as an env loader. Seven files and **18,678 lines** deleted, including `pnpm-lock.yaml`,
 `pnpm-workspace.yaml`, and two scripts described below.
 
-More removals are queued for phase 6 — `dotenv`, `@hono/node-server`, `bcrypt`,
-`postgres`, `undici`, and `node-pty`.
+Two were deliberately **kept**: `dotenv` for its `parse()` function, which reads
+user-supplied env files and has no Bun equivalent, and `undici` for the `FileList`
+polyfill — Bun provides `File` natively but not `FileList`, and the affected upload path
+is not covered by the test suite.
 
 ### The change that is not a number
 

@@ -1,7 +1,5 @@
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import "dotenv/config";
 import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
 import { Inngest } from "inngest";
 import { serve as serveInngest } from "inngest/hono";
 import { logger } from "./logger.js";
@@ -211,4 +209,7 @@ app.on(
 
 const port = Number.parseInt(process.env.PORT || "3000");
 logger.info("Starting Deployments Server with Inngest ✅", port);
-serve({ fetch: app.fetch, port });
+
+// Bun.serve: exporting { fetch, port } is the runtime's own contract, so no
+// adapter package is needed. Bun also loads .env itself, hence no dotenv import.
+export default { fetch: app.fetch, port };

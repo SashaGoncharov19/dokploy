@@ -4,22 +4,19 @@
 	"type": "module",
 	"scripts": {
 		"dev": "PORT=4000 bun --watch src/index.ts",
-		"build": "rm -rf dist && bun build ./src/index.ts --target=bun --outdir=dist --minify --sourcemap --packages=external",
+		"build": "rm -rf dist && bun build ./src/index.ts --target=bun --outdir=dist --minify --sourcemap",
 		"start": "bun dist/index.js",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"inngest": "3.40.1",
 		"@dokploy/server": "workspace:*",
-		"@hono/node-server": "^1.14.3",
 		"@hono/zod-validator": "0.7.6",
-		"dotenv": "^16.4.5",
 		"hono": "^4.11.7",
+		"inngest": "3.40.1",
 		"pino": "9.4.0",
 		"pino-pretty": "11.2.2",
 		"react": "19.2.7",
 		"react-dom": "19.2.7",
-		"redis": "4.7.0",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

@@ -13,7 +13,6 @@ import {
 	sendDokployRestartNotifications,
 	setupDirectories,
 } from "@dokploy/server";
-import { config } from "dotenv";
 import next from "next";
 import packageInfo from "../package.json";
 import { setupDockerContainerLogsWebSocketServer } from "./wss/docker-container-logs";
@@ -23,7 +22,6 @@ import { setupDrawerLogsWebSocketServer } from "./wss/drawer-logs";
 import { setupDeploymentLogsWebSocketServer } from "./wss/listen-deployment";
 import { setupTerminalWebSocketServer } from "./wss/terminal";
 
-config({ path: ".env" });
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 const dev = process.env.NODE_ENV !== "production";
