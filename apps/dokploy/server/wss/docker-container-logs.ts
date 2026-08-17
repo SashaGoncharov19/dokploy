@@ -1,9 +1,9 @@
 import type http from "node:http";
 import { findServerById, IS_CLOUD, validateRequest } from "@dokploy/server";
-import { spawn } from "node-pty";
 import { Client } from "ssh2";
 import { WebSocketServer } from "ws";
 import { canAccessDockerOverWss } from "./authorize";
+import { spawnPty } from "./pty";
 import {
 	getShell,
 	isValidContainerId,
@@ -164,11 +164,10 @@ export const setupDockerContainerLogsWebSocketServer = (
 				const command = search
 					? `${baseCommand} 2>&1 | grep -iF '${search}'`
 					: baseCommand;
-				const ptyProcess = spawn(shell, ["-c", command], {
+				const ptyProcess = spawnPty(shell, ["-c", command], {
 					name: "xterm-256color",
 					cwd: process.env.HOME,
 					env: process.env,
-					encoding: "utf8",
 					cols: 80,
 					rows: 30,
 				});

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch as typeof fetch;
+global.fetch = mockFetch as unknown as typeof fetch;
 
 import { cloudflareClient } from "@dokploy/server/utils/dns/cloudflare";
 
