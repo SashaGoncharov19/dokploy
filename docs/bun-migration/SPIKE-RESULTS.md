@@ -146,9 +146,53 @@ Captured on this machine (macOS arm64), pnpm 10.22.0 provisioned via corepack.
 
 `bun install` migrated `pnpm-lock.yaml` to `bun.lock` automatically on first run.
 
-**Not yet measured:** build wall-times, Docker image sizes, server cold-boot time and
-RSS. Those become meaningful after Phases 3–4 and 7, when the build and runtime actually
-change; measuring them now would only re-measure the Node toolchain.
+**Not yet measured:** Docker image sizes, server cold-boot time and RSS. Those become
+meaningful after Phases 4 and 7, when the runtime actually changes; measuring them now
+would only re-measure Node.
+
+### CI wall-times — same runner, same code, toolchain swapped
+
+GitHub-hosted `ubuntu-latest`, one run per configuration.
+
+| Job | pnpm (baseline) | Phase 1 — bun | Phase 2 — bun, no server build |
+|---|---|---|---|
+| `build` | 3m51s | 3m41s | **2m39s** |
+| `test` | 4m31s | 3m29s | 3m44s |
+| `typecheck` | 1m25s | 56s | 1m6s |
+| `format` | 10s | 12s | 8s |
+
+⚠️ **n=1 per configuration.** These are single runs on shared runners, so treat
+differences under roughly 15s as noise — `format`, and the `test`/`typecheck` movement
+between Phase 1 and Phase 2, are all inside that band. Only `build` moved far enough to
+be a real signal, and its cause is known rather than inferred: Phase 2 deleted the
+`server:build` step entirely, so the drop is work removed, not work sped up.
+
+The honest summary is **"build got meaningfully shorter, the rest is not yet
+distinguishable from noise."** Repeated runs would be needed to claim more.
+
+### The result that actually matters
+
+**All 874 tests pass on Bun in CI**, including the 4 that fail locally for want of
+`docker swarm init`. The full Dokploy test suite — deploys, traefik, SSH, docker,
+compose, backups, permissions — runs green on Bun.
+
+That is a stronger statement than any timing number, and it is the one to lead with.
+
+### Two failures CI caught that local runs did not
+
+Both had the same root cause: **the local environment was richer than a clean checkout.**
+
+1. **`apps/api` / `apps/schedules` builds.** Removing the `packages/server` build broke
+   their `tsc` builds, because both compiled against the generated `dist` declarations.
+   Typecheck stayed green — it resolves via tsconfig `paths` — so only running the real
+   build surfaced it.
+2. **Lockfile drift.** Dependencies were removed from manifests without re-running
+   `bun install`, so `bun.lock` went stale and `--frozen-lockfile` failed in CI. Local
+   builds passed because `node_modules` already had everything.
+
+**Process rule taken from this:** after any `package.json` edit, run `bun install` and
+commit the lockfile, and do the final pre-PR verification from `rm -rf node_modules`.
+A green typecheck is not evidence that the build works.
 
 ### Test failures are environmental, not migration-caused
 

@@ -62,6 +62,20 @@ Never reintroduce one, and never write a script that mutates its `package.json`
 **`bun build` does not typecheck.** A green build says nothing about types. Run
 `typecheck` separately, always, before claiming a change compiles.
 
+**And a green typecheck says nothing about the build.** `typecheck` resolves through
+tsconfig `paths`; the build does not. Both have to run.
+
+### Before opening a PR
+
+Two failures in this migration reached CI because the local environment was richer than
+a clean checkout. Both are cheap to prevent:
+
+1. **Edited any `package.json`?** Run `bun install` and commit `bun.lock` in the same
+   commit. CI runs `--frozen-lockfile` and a stale lockfile fails it instantly.
+2. **Verify from clean.** `rm -rf node_modules && bun install --frozen-lockfile`, then
+   `bun run --filter '*' typecheck && bun run build`. Passing against a warm
+   `node_modules` proves less than it appears to.
+
 ### Native dependencies
 
 `node-pty`, `ssh2`, `bcrypt`, `better-sqlite3`, `sharp` and friends need postinstall
