@@ -31,22 +31,23 @@ was possible. Where something is untested, it says so.
 
 ## Status
 
-The migration is [planned in nine phases](docs/bun-migration/PLAN.md). **Three are done.**
+The migration is [planned in nine phases](docs/bun-migration/PLAN.md). **Four are done.**
 
 | Phase | What | Status |
 |---|---|---|
 | 0 | Native module spike (`node-pty`, `ssh2`, `dockerode`) | ✅ done |
 | 1 | Package manager: pnpm → bun | ✅ done |
 | 2 | TypeScript on Bun, no `packages/server` build | ✅ done |
-| 3 | Bundler: esbuild → `bun build` (apps/dokploy) | ⬜ |
-| 4 | **Runtime: Node → Bun** (custom server, 6 WebSocket servers) | ⬜ |
-| 5 | Native APIs (`Bun.Terminal`, `Bun.password`, `Bun.sql`) | ⬜ |
+| 3 | Bundler: esbuild → `bun build` (apps/dokploy) | ✅ done |
+| 4 | **Runtime: Node → Bun** — production and dev both verified | ✅ done |
+| 5 | Native APIs — `Bun.Terminal` ✅ done, `Bun.password`/`Bun.sql` pending | 🟡 partial |
 | 6 | Dependency cleanup | ⬜ |
 | 7 | Docker + CI | ⬜ |
 | 9 | Tests: vitest → `bun test`, gradually | ⬜ |
 
-> **The web app still executes on Node in production.** Phase 4 is where that changes.
-> Nothing here is yet a claim about runtime performance.
+> **The web app now runs on Bun**, in production and in dev — verified against a real
+> database, with SSR, tRPC and WebSockets all responding. There are still no runtime
+> *performance* numbers; nothing has run under real load.
 
 ---
 
@@ -57,6 +58,13 @@ The migration is [planned in nine phases](docs/bun-migration/PLAN.md). **Three a
 **All 874 tests pass on Bun in CI** — deploys, traefik, SSH, docker, compose, backups,
 permissions. This is the single most useful data point so far, and it is stronger than
 any timing number.
+
+### The application runs on Bun, end to end
+
+Verified against a real PostgreSQL 16, production build, `bun dist/server.mjs`: the full
+drizzle migration chain applies from an empty database, `/register` returns **200** with
+42 KB of server-rendered HTML, `/api/trpc/settings.health` returns **200**, the WebSocket
+endpoints answer **101 Switching Protocols**, and the server log contains **zero errors**.
 
 ### `next build` works on Bun
 
@@ -147,17 +155,17 @@ seconds saved.
 
 Stated plainly, because a benchmark table that omits its gaps is not worth reading:
 
-- **No runtime performance data.** The server still runs on Node until phase 4. Nothing
-  here says anything about request latency, throughput, or memory.
+- **No runtime performance data.** The server runs on Bun now, but nothing here measures
+  request latency, throughput, or memory against Node.
 - **No production evidence.** No instance has run under sustained real load.
 - **No Docker image comparison.** Image size and cold-boot time come with phase 7.
 - **`node_modules` did not shrink.** 1.5G before, 1.5G after.
 
 ## Known broken
 
-- **Docker builds fail** on this branch. Phase 1 deleted `pnpm-lock.yaml` while the
-  Dockerfiles still run `pnpm install --frozen-lockfile`. Fixed in phase 7. **No release
-  can be cut from this line until then.**
+- **Docker builds fail.** Phase 1 deleted `pnpm-lock.yaml` while the Dockerfiles still
+  run `pnpm install --frozen-lockfile`. Fixed in phase 7. **No release can be cut from
+  this line until then.**
 
 ---
 

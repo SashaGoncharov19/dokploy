@@ -37,7 +37,15 @@ if (process.env.NODE_ENV === "production" && !IS_CLOUD) {
 	console.log("✅ initialization complete");
 }
 
-const app = next({ dev, turbopack: process.env.TURBOPACK === "1" });
+// Passing `turbopack: false` is not an opt-out: with neither flag truthy Next 16
+// falls through to `process.env.TURBOPACK ??= "auto"` and uses Turbopack anyway.
+// Webpack has to be asked for explicitly. Turbopack's dev output refers to
+// externalised packages by a hash-suffixed synthetic name that Bun's resolver
+// cannot resolve ("Cannot find package 'next-themes-6b0513a0c1105732'"), so under
+// Bun the dev server only works on webpack. This also matches `next build
+// --webpack`, so dev and build now use the same bundler.
+const useTurbopack = process.env.TURBOPACK === "1";
+const app = next({ dev, turbopack: useTurbopack, webpack: !useTurbopack });
 const handle = app.getRequestHandler();
 void app.prepare().then(async () => {
 	try {

@@ -7,8 +7,8 @@
 // values, which is worse than reading them where they are actually used.
 //
 // Output keeps the .mjs extension so the Dockerfile CMD and the package.json
-// start/reset/migration scripts stay untouched. Target stays "node": this phase
-// swaps the bundler only, the runtime moves to Bun in phase 4.
+// start/reset/migration scripts stay untouched. Target is "bun": as of phase 4
+// these entrypoints are executed by Bun, not Node.
 //
 // Excluded from tsconfig.json like migration.ts and setup.ts, so Bun globals do
 // not leak into the app's type program (pulling in bun-types globally rewrites
@@ -24,7 +24,7 @@ const output = await Bun.build({
 		"scripts/migrate-auth-secret.ts",
 	],
 	outdir: "dist",
-	target: "node",
+	target: "bun",
 	format: "esm",
 	minify: true,
 	sourcemap: "external",

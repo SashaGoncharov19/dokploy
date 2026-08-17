@@ -1,9 +1,9 @@
 import type http from "node:http";
 import { findServerById, IS_CLOUD, validateRequest } from "@dokploy/server";
-import { spawn } from "node-pty";
 import { Client } from "ssh2";
 import { WebSocketServer } from "ws";
 import { canAccessDockerOverWss } from "./authorize";
+import { spawnPty } from "./pty";
 import {
 	isValidContainerId,
 	isValidShell,
@@ -173,7 +173,7 @@ export const setupDockerContainerTerminalWebSocketServer = (
 					ws.close();
 					return;
 				}
-				const ptyProcess = spawn(
+				const ptyProcess = spawnPty(
 					"docker",
 					["exec", "-it", "-w", "/", containerId, shell],
 					{ cols, rows },

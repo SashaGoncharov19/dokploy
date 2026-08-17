@@ -50,7 +50,6 @@
 		"cpu-features",
 		"esbuild",
 		"msgpackr-extract",
-		"node-pty",
 		"protobufjs",
 		"sharp",
 		"ssh2",

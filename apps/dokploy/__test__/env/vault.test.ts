@@ -23,7 +23,7 @@ import { hashicorpClient } from "@dokploy/server/utils/vault/hashicorp";
 import { scalewayClient } from "@dokploy/server/utils/vault/scaleway";
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch as typeof fetch;
+global.fetch = mockFetch as unknown as typeof fetch;
 
 const jsonResponse = (body: unknown, ok = true, status = 200) =>
 	({

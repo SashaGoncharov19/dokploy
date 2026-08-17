@@ -170,6 +170,86 @@ be a real signal, and its cause is known rather than inferred: Phase 2 deleted t
 The honest summary is **"build got meaningfully shorter, the rest is not yet
 distinguishable from noise."** Repeated runs would be needed to claim more.
 
+### Phase 4 — the application actually running on Bun
+
+Verified against a real PostgreSQL 16 container, production build, `bun dist/server.mjs`:
+
+| Check | Result |
+|---|---|
+| Full drizzle migration chain from empty DB | ✅ "Migration complete" |
+| `/register` SSR | ✅ **200**, 42 KB of rendered HTML with `__NEXT_DATA__` |
+| `/api/trpc/settings.health` | ✅ **200** `{"status":"ok"}` |
+| `/reset-password`, `/invitation` | ✅ 307 (expected auth redirects) |
+| WebSocket upgrade (`/docker-container-terminal`) | ✅ **101 Switching Protocols** |
+| Errors in the server log | ✅ **zero** |
+
+**Correction to an earlier claim in this document's history:** a first run appeared to show
+SSR failing in production. That was an artifact of the test sequence — the dev server had
+been started first and overwrote `.next/` with Turbopack dev chunks, which the production
+server then loaded. On a clean `rm -rf .next && bun run build`, production works with no
+errors. The lesson generalises: never test a production build in a tree a dev server has
+touched.
+
+### Next.js dev mode under Bun — broken by default, fixed with one option
+
+Reproducible on a clean `.next`, both with and without the custom server's `turbopack`
+flag, and unaffected by `NEXT_DISABLE_TURBOPACK=1`:
+
+```
+⨯ Error: Failed to load external module next-themes-6b0513a0c1105732:
+  Cannot find package 'next-themes-6b0513a0c1105732' from
+  '.next/dev/server/chunks/ssr/[root-of-the-server]__0ovu9hl._.js'
+```
+
+Next 16's dev server refers to externalised packages by a **hash-suffixed synthetic
+name**, and Bun's resolver cannot resolve it. Node can. `transpilePackages` did not help,
+and neither did `NEXT_DISABLE_TURBOPACK=1`.
+
+**The fix is to stop using Turbopack in dev**, which requires knowing that `turbopack:
+false` is *not* an opt-out. From `next/dist/server/next.js`:
+
+```js
+if (selectTurbopack)      process.env.TURBOPACK ??= "1";
+else if (!selectWebpack)  process.env.TURBOPACK ??= "auto";   // ← default
+```
+
+With neither flag truthy Next falls through to Turbopack anyway. Webpack has to be asked
+for explicitly, so the custom server now passes `webpack: !useTurbopack`. This also aligns
+dev with `next build --webpack`, which the repo already used — dev and build now run the
+same bundler instead of two different ones.
+
+Verified after the change: `/register` **200** with 31 KB of SSR HTML,
+`/api/trpc/settings.health` **200**, WebSocket **101**, zero resolve errors.
+
+The breakage predated phase 4 — the `dev` script moved to `bun` in phase 2, which was
+verified with typecheck, build and tests but never by actually starting the dev server.
+Process miss worth keeping: *a script that starts a long-running process is not verified
+until it has been started.*
+
+Worth noting for anyone comparing against a "Next.js on Bun" starter template: running
+`bun run dev` where the script is `next dev` does **not** run Next on Bun. The `next` CLI
+carries a `#!/usr/bin/env node` shebang, so Bun acts only as package manager and script
+runner while Next itself executes on Node (`bun --bun` forces otherwise). A custom server
+that imports `next()` in-process, as Dokploy does, genuinely runs Next inside Bun — which
+is why this hit us and does not hit those templates.
+
+### `Bun.Terminal`: `proc.kill()` silently does nothing
+
+Found while porting off node-pty, and worth knowing for anyone using `Bun.spawn` with a
+`terminal`:
+
+| Method | exit callback | process actually dies |
+|---|---|---|
+| `proc.kill()` | ❌ | ❌ **stays alive** |
+| `proc.kill("SIGKILL")` | ✅ | ✅ |
+| `proc.terminal.close()` | ✅ | ✅ |
+| `process.kill(pid, "SIGHUP")` | ✅ | ✅ |
+
+Only the no-argument form fails, and it fails silently — `proc.exited` never resolves and
+`killed` stays `false`. Both WebSocket handlers call `kill()` when the socket closes, so
+using it would have leaked a `docker exec` or `docker logs --follow` process per session.
+The adapter uses `terminal.close()` followed by an explicit `SIGKILL`.
+
 ### The result that actually matters
 
 **All 874 tests pass on Bun in CI**, including the 4 that fail locally for want of
