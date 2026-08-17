@@ -1,5 +1,5 @@
 import type { Security } from "@dokploy/server/services/security";
-import * as bcrypt from "bcrypt";
+import { hashPassword } from "../../lib/password";
 import type { ApplicationNested } from "../builders";
 import {
 	loadOrCreateConfig,
@@ -34,7 +34,7 @@ export const createSecurityMiddleware = async (
 	}
 	const middlewareName = `auth-${appName}`;
 
-	const user = `${data.username}:${await bcrypt.hash(data.password, 10)}`;
+	const user = `${data.username}:${await hashPassword(data.password)}`;
 
 	if (config.http?.middlewares) {
 		const currentMiddleware = config.http.middlewares[middlewareName];

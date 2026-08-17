@@ -233,6 +233,27 @@ runner while Next itself executes on Node (`bun --bun` forces otherwise). A cust
 that imports `next()` in-process, as Dokploy does, genuinely runs Next inside Bun — which
 is why this hit us and does not hit those templates.
 
+### `Bun.password` throws where npm `bcrypt` returns false
+
+Compatibility of the hashes themselves was already settled (both directions, §2). The
+difference that actually needed handling is in the failure path:
+
+| Stored hash | npm `bcrypt` | `Bun.password.verify*` |
+|---|---|---|
+| valid, wrong password | `false` | `false` |
+| empty string | `false` | `false` |
+| garbage / truncated | `false` | **throws** |
+| argon2 (wrong algorithm) | `false` | **throws** |
+
+`apps/dokploy/server/api/routers/user.ts` compares against
+`currentAuth?.password || ""`, and `account.password` is user data that can be malformed
+for reasons outside this codebase. Left unhandled, one bad row turns a clean
+"Current password is incorrect" 400 into a 500.
+
+`packages/server/src/lib/password.ts` normalises this — verification catches and returns
+`false`, matching bcrypt exactly — and pins `algorithm: "bcrypt"` on every hash so the
+argon2id default can never reach the database or the Traefik htpasswd file.
+
 ### `Bun.Terminal`: `proc.kill()` silently does nothing
 
 Found while porting off node-pty, and worth knowing for anyone using `Bun.spawn` with a
