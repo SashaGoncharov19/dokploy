@@ -1,13 +1,12 @@
 import { and, eq } from "drizzle-orm";
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { type BunSQLDatabase, drizzle } from "drizzle-orm/bun-sql";
 import { dbUrl } from "./constants";
 import * as schema from "./schema";
 
 export { and, eq };
 export * from "./schema";
 
-type Database = PostgresJsDatabase<typeof schema>;
+type Database = BunSQLDatabase<typeof schema>;
 
 // Este módulo se evalúa varias veces por proceso (copias duplicadas por
 // esbuild y los chunks de Next); el cache en globalThis garantiza un solo
@@ -17,7 +16,7 @@ const globalForDb = globalThis as unknown as {
 };
 
 if (!globalForDb.db) {
-	globalForDb.db = drizzle(postgres(dbUrl), {
+	globalForDb.db = drizzle(dbUrl, {
 		schema,
 	});
 }

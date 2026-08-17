@@ -233,6 +233,72 @@ runner while Next itself executes on Node (`bun --bun` forces otherwise). A cust
 that imports `next()` in-process, as Dokploy does, genuinely runs Next inside Bun — which
 is why this hit us and does not hit those templates.
 
+### `next build` spawns Node workers — `--bun` is required
+
+The most transferable finding of the whole migration.
+
+Moving the database driver to `drizzle-orm/bun-sql` broke `next build`:
+
+```
+Error: Cannot find package 'bun' imported from
+  node_modules/.../drizzle-orm/bun-sql/driver.js
+> Build error occurred
+Error: Failed to collect page data for /dashboard/monitoring
+```
+
+`next build` collects page data in **child processes**, and those are Node even when the
+outer command runs under Bun. Any module reachable from page code must therefore be
+resolvable by Node — and `drizzle-orm/bun-sql` does `import "bun"`, which Node cannot
+resolve.
+
+The fix is `bun --bun`, whose documented job is exactly this: *"Force a script or package
+to use Bun's runtime instead of Node.js (via symlinking node)."* With `build-next` set to
+`bun --bun next build --webpack`, the spawned workers are Bun and the import resolves.
+
+**The general rule: `bun run x` does not make everything `x` spawns run on Bun.** It is
+worth knowing before adopting any Bun-only API in code a bundler or framework might
+evaluate out-of-process.
+
+Related: this is also why "Next.js on Bun" starter templates work without hitting any of
+this. `bun run dev` where the script is `next dev` runs the `next` CLI, which carries a
+`#!/usr/bin/env node` shebang — Bun is the package manager and script runner, Node is the
+runtime. Dokploy's custom server imports `next()` in-process, so Next genuinely runs
+inside Bun.
+
+### `Bun.sql` cannot batch statements; drizzle's `execute` can
+
+```
+await sql`CREATE SCHEMA a; CREATE SCHEMA b;`
+  -> cannot insert multiple commands into a prepared statement
+await sql.unsafe("CREATE SCHEMA a; CREATE SCHEMA b;")   -> OK
+```
+
+The tagged template goes through the extended protocol, which forbids multiple commands.
+`server/db/reset.ts` issues `DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP schema
+drizzle CASCADE;` as one statement — but it goes through drizzle's `db.execute()`, which
+does not prepare, so it **works unchanged**. Verified against a real database rather than
+assumed, because the failure would only have appeared when someone reset their database.
+
+### Migration chain on `Bun.sql`
+
+186 migrations applied to an empty PostgreSQL 16, producing 67 tables.
+
+| Driver | Full chain |
+|---|---|
+| `postgres.js` | 699ms |
+| `Bun.sql` | 593ms |
+
+Close enough to be noise for a one-off operation; not claimed as a win. Runtime queries
+were verified separately by booting the app and hitting `whitelabeling.getPublic`, which
+reads real tables — 200, and zero database errors in the log.
+
+One incidental difference: `postgres.js` prints PostgreSQL `NOTICE` messages to stdout
+during migration, `Bun.sql` does not.
+
+**`postgres` does not leave the dependency tree.** It is an `optionalDependency` of
+`drizzle-orm` itself, so dropping our direct dependency is a code-clarity change, not a
+size one.
+
 ### `Bun.password` throws where npm `bcrypt` returns false
 
 Compatibility of the hashes themselves was already settled (both directions, §2). The
