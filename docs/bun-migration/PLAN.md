@@ -418,6 +418,16 @@ Also drop the root `esbuild: "0.20.2"` override once nothing depends on esbuild.
 
 ## 11. Phase 7 — Docker and CI
 
+> ⚠️ **Docker builds are broken from Phase 1 until this phase lands.** Deleting
+> `pnpm-lock.yaml` in Phase 1 breaks `pnpm install --frozen-lockfile` in all four
+> Dockerfiles immediately. This was not anticipated when the phases were ordered.
+>
+> It is contained — the migration branch is not deployed, and `canary` still builds —
+> but it means **Phase 7 cannot be deferred indefinitely**, and no release can be cut
+> from this branch until it lands. If Docker needs to be green sooner, pull the install
+> lines forward: switch the base image to `oven/bun` and `bun install --frozen-lockfile`,
+> leaving the build/runtime commands for their own phases.
+
 ### 7.1 Dockerfiles
 
 Four of the five need rewriting (`Dockerfile.monitoring` is Go — leave it).

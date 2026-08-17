@@ -44,6 +44,6 @@ jobs:
           docker network create --driver overlay dokploy-network || true
           echo "✅ Docker Swarm initialized"
       
+      # No server build step: @dokploy/server is consumed as TypeScript source.
       - run: bun install --frozen-lockfile
-      - run: bun run server:build
       - run: bun run ${{ matrix.job }}

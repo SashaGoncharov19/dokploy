@@ -11,9 +11,6 @@
 		"dokploy:build": "bun run --filter dokploy build",
 		"dokploy:start": "bun run --filter dokploy start",
 		"test": "bun run --filter dokploy test",
-		"server:script": "bun run --filter @dokploy/server switch:dev",
-		"server:dev": "bun run --filter @dokploy/server dev",
-		"server:build": "bun run --filter @dokploy/server build",
 		"docker:build:canary": "./apps/dokploy/docker/build.sh canary",
 		"typecheck": "bun run --filter '*' typecheck",
 		"build": "bun run --filter '*' build",
@@ -27,8 +24,7 @@
 		"@types/node": "^24.4.0",
 		"dotenv": "16.4.5",
 		"esbuild": "0.20.2",
-		"lint-staged": "^15.5.2",
-		"tsx": "4.22.4"
+		"lint-staged": "^15.5.2"
 	},
 	"engines": {
 		"bun": ">=1.3.14"
