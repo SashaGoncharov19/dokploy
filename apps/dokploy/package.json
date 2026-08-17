@@ -7,7 +7,7 @@
 	"scripts": {
 		"build": "bun run build-server && bun run build-next",
 		"start": "node -r dotenv/config dist/migration.mjs && node -r dotenv/config dist/server.mjs",
-		"build-server": "bun esbuild.config.ts",
+		"build-server": "bun scripts/build-server.ts",
 		"build-next": "next build --webpack",
 		"setup": "bun setup.ts && sleep 5 && bun run migration:run",
 		"wait-for-postgres": "node -r dotenv/config dist/wait-for-postgres.mjs",
@@ -169,7 +169,6 @@
 		"@types/swagger-ui-react": "^4.19.0",
 		"@types/ws": "8.5.10",
 		"drizzle-kit": "^0.31.4",
-		"esbuild": "0.20.2",
 		"lint-staged": "^15.5.2",
 		"memfs": "^4.17.2",
 		"simple-icons": "^16.14.0",
