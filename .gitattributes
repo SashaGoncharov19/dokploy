@@ -1,0 +1,18 @@
+# Fork maintenance — see docs/FORK-STRATEGY.md
+#
+# Generated artifacts: keep ours on conflict, then REGENERATE deliberately.
+# Requires (once per clone):  git config merge.ours.driver true
+
+bun.lock                     merge=ours linguist-generated=true
+openapi.json                 merge=ours linguist-generated=true
+
+# Drizzle snapshots are generated; the migration SQL next to them is NOT.
+# `merge=ours` here keeps our snapshot and drops upstream's, which is correct for
+# the snapshot but silently wrong if upstream added migrations. After every
+# upstream sync, review apps/dokploy/drizzle/*.sql by hand and renumber any new
+# upstream migrations into our journal.
+apps/dokploy/drizzle/meta/** merge=ours linguist-generated=true
+
+# Regenerate after a sync:
+#   bun install
+#   bun run generate:openapi
