@@ -25,6 +25,8 @@ export default defineConfig({
 			"**/__test__/traefik/**",
 			"**/__test__/server/**",
 			"**/__test__/permissions/**",
+			"**/__test__/wss/**",
+			"**/__test__/dns/**",
 		],
 		pool: "forks",
 		setupFiles: [path.resolve(__dirname, "setup.ts")],

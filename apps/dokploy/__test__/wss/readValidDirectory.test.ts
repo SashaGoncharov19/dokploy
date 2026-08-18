@@ -1,21 +1,22 @@
+import { describe, expect, it, mock } from "bun:test";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import * as constants from "@dokploy/server/constants";
 
 const BASE = "/base";
 
-vi.mock("@dokploy/server/constants", async (importOriginal) => {
-	const actual =
-		await importOriginal<typeof import("@dokploy/server/constants")>();
-	return {
-		...actual,
-		paths: () => ({
-			...actual.paths(),
-			BASE_PATH: BASE,
-			LOGS_PATH: `${BASE}/logs`,
-			APPLICATIONS_PATH: `${BASE}/applications`,
-		}),
-	};
-});
+// Snapshot before mocking: `mock.module` has no `importOriginal`, and reading
+// through the namespace afterwards would recurse into the mock.
+const actual = { ...constants };
+
+mock.module("@dokploy/server/constants", () => ({
+	...actual,
+	paths: () => ({
+		...actual.paths(),
+		BASE_PATH: BASE,
+		LOGS_PATH: `${BASE}/logs`,
+		APPLICATIONS_PATH: `${BASE}/applications`,
+	}),
+}));
 
 // Import after mock so paths() uses our BASE
 const { readValidDirectory } = await import("@dokploy/server");
