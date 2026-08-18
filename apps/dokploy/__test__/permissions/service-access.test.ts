@@ -45,7 +45,7 @@ vi.mock("@dokploy/server/db", () => ({
 }));
 
 vi.mock("@dokploy/server/services/proprietary/license-key", () => ({
-	hasValidLicense: vi.fn(() => Promise.resolve(false)),
+	hasValidLicense: vi.fn(() => Promise.resolve(true)),
 }));
 
 const { checkServicePermissionAndAccess, checkServiceAccess } = await import(
