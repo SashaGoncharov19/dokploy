@@ -124,8 +124,17 @@ check_existing_database() {
     if [ "${DOKPLOY_RESET_DB}" = "true" ]; then
         echo "DOKPLOY_RESET_DB=true - removing the existing database volume."
         docker service rm dokploy dokploy-postgres >/dev/null 2>&1 || true
+
+        # Removing the services is not enough: their stopped containers keep a
+        # reference to the volume, and `docker volume rm` then reports
+        # "volume is in use" for a container that is not even running.
         i=0
         while [ "$i" -lt 30 ]; do
+            holders=$(docker ps -aq --filter volume=dokploy-postgres 2>/dev/null)
+            if [ -n "$holders" ]; then
+                # shellcheck disable=SC2086
+                docker rm -f $holders >/dev/null 2>&1 || true
+            fi
             docker volume rm dokploy-postgres >/dev/null 2>&1 && break
             i=$((i + 1))
             sleep 1
