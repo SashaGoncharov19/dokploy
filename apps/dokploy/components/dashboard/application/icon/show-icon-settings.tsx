@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Dropzone } from "@/components/ui/dropzone";
 import { Input } from "@/components/ui/input";
-import { type BundledIcon, bundledIcons } from "@/lib/bundled-icons";
+import type { BundledIcon } from "@/lib/bundled-icons";
 import { api } from "@/utils/api";
 
 interface ShowIconSettingsProps {
@@ -34,6 +34,17 @@ export const ShowIconSettings = ({
 	const [open, setOpen] = useState(false);
 	const [iconSearchQuery, setIconSearchQuery] = useState("");
 	const [iconsToShow, setIconsToShow] = useState(24);
+	const [bundledIcons, setBundledIcons] = useState<BundledIcon[]>([]);
+
+	// 121KB of inlined SVG for a picker most visits never open. This component
+	// renders in the page header of every application and compose page, so a
+	// static import made every one of those visits pay for it.
+	useEffect(() => {
+		if (!open || bundledIcons.length > 0) return;
+		void import("@/lib/bundled-icons").then((m) =>
+			setBundledIcons(m.bundledIcons),
+		);
+	}, [open, bundledIcons.length]);
 
 	const filteredIcons = useMemo(() => {
 		if (!iconSearchQuery) return bundledIcons;
@@ -42,7 +53,7 @@ export const ShowIconSettings = ({
 			(i) =>
 				i.title.toLowerCase().includes(q) || i.slug.toLowerCase().includes(q),
 		);
-	}, [iconSearchQuery]);
+	}, [iconSearchQuery, bundledIcons]);
 
 	const displayedIcons = filteredIcons.slice(0, iconsToShow);
 	const hasMoreIcons = filteredIcons.length > iconsToShow;
