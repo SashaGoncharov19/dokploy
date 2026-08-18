@@ -1,26 +1,50 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from "bun:test";
+import * as serverBarrel from "@dokploy/server";
+import * as permissionModule from "@dokploy/server/services/permission";
+import * as octokitModule from "octokit";
 
 // The gh_init branch runs on a GET the user can be linked into, so a rejected
 // host must produce a 400 *before* any outbound request is made.
-const mockValidateRequest = vi.hoisted(() => vi.fn());
-const mockHasPermission = vi.hoisted(() => vi.fn());
-const mockCreateGithub = vi.hoisted(() => vi.fn());
-const mockOctokitRequest = vi.hoisted(() => vi.fn());
+const mockValidateRequest = jest.fn();
+const mockHasPermission = jest.fn();
+const mockCreateGithub = jest.fn();
+const mockOctokitRequest = jest.fn();
 
-vi.mock("@dokploy/server", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@dokploy/server")>();
-	return {
-		...actual,
-		validateRequest: mockValidateRequest,
-		createGithub: mockCreateGithub,
-	};
-});
+// Snapshot before mocking - there is no `importOriginal`, and reading back
+// through the namespace afterwards would recurse into the mock. The restores
+// matter more than usual here: this stubs the whole `@dokploy/server` barrel,
+// and `mock.module` outlives the file that called it.
+const actualBarrel = { ...serverBarrel };
+const actualPermission = { ...permissionModule };
+const actualOctokit = { ...octokitModule };
 
-vi.mock("@dokploy/server/services/permission", () => ({
+mock.module("@dokploy/server", () => ({
+	...actualBarrel,
+	validateRequest: mockValidateRequest,
+	createGithub: mockCreateGithub,
+}));
+
+mock.module("@dokploy/server/services/permission", () => ({
+	...actualPermission,
 	hasPermission: mockHasPermission,
 }));
 
-vi.mock("octokit", () => ({
+afterAll(() => {
+	mock.module("@dokploy/server", () => actualBarrel);
+	mock.module("@dokploy/server/services/permission", () => actualPermission);
+	mock.module("octokit", () => actualOctokit);
+});
+
+mock.module("octokit", () => ({
+	...actualOctokit,
 	Octokit: class {
 		request = mockOctokitRequest;
 	},
@@ -69,7 +93,7 @@ const call = async (githubUrl?: string | string[]) => {
 
 describe("github setup handler — host validation", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		jest.clearAllMocks();
 		mockValidateRequest.mockResolvedValue({
 			user: { id: USER },
 			session: { activeOrganizationId: ORG },

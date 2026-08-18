@@ -1,22 +1,38 @@
 import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from "bun:test";
+import {
 	canEditDeployGitSource,
 	getAccessibleGitProviderIds,
 } from "@dokploy/server/services/git-provider";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDbMock } from "../db-mock";
 
-const mockDb = vi.hoisted(() => ({
+const mockDb = {
 	query: {
 		gitProvider: {
-			findMany: vi.fn(),
-			findFirst: vi.fn(),
+			findMany: jest.fn(),
+			findFirst: jest.fn(),
 		},
 		member: {
-			findFirst: vi.fn(),
+			findFirst: jest.fn(),
 		},
 	},
-}));
+};
 
-vi.mock("@dokploy/server/db", () => ({ db: mockDb }));
+mock.module("@dokploy/server/db", () => ({ db: mockDb }));
+
+// Put the preload's shape back: `mock.module` is process-global, and this
+// narrow stub would otherwise leave `db` without the tables every later file
+// expects. See __test__/db-mock.ts.
+afterAll(() => {
+	mock.module("@dokploy/server/db", () => createDbMock(jest.fn));
+});
 
 const ORG_ID = "org-1";
 const USER_OWNER = "user-owner";
@@ -57,7 +73,7 @@ function session(userId: string) {
 }
 
 beforeEach(() => {
-	vi.clearAllMocks();
+	jest.clearAllMocks();
 	mockDb.query.gitProvider.findMany.mockResolvedValue(allProviders);
 });
 
@@ -204,7 +220,7 @@ describe("getAccessibleGitProviderIds", () => {
 
 describe("canEditDeployGitSource", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe("owner", () => {

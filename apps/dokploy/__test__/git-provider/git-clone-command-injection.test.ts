@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import { cloneGitRepository } from "@dokploy/server/utils/providers/git";
 import { parse, quote } from "shell-quote";
-import { describe, expect, it } from "vitest";
 
 // How git-provider commands escape a single user value before it reaches the shell.
 const shellArg = (value: string) => quote([String(value ?? "")]);

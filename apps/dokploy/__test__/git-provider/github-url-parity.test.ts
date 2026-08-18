@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { parseGithubBaseUrl } from "@dokploy/server/utils/providers/github";
-import { describe, expect, it } from "vitest";
 import { DEFAULT_GITHUB_URL, resolveGithubBaseUrl } from "@/utils/github-utils";
 
 /**

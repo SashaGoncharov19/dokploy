@@ -1,22 +1,49 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from "bun:test";
+import * as githubService from "@dokploy/server/services/github";
+import * as authApp from "@octokit/auth-app";
+import * as octokitModule from "octokit";
 
 // cloneGithubRepository builds a shell command; the only thing under test here
 // is which host ends up in the clone URL, so the app auth is stubbed out.
-const mockFindGithubById = vi.hoisted(() => vi.fn());
+const mockFindGithubById = jest.fn();
 
-vi.mock("@dokploy/server/services/github", () => ({
+// Snapshot each module before replacing it. `mock.module` is process-global and
+// `mock.restore()` does not undo it, so every stub here has to be put back or it
+// changes the behaviour of every later file in the same `bun test` run.
+const actualGithubService = { ...githubService };
+const actualAuthApp = { ...authApp };
+const actualOctokit = { ...octokitModule };
+
+mock.module("@dokploy/server/services/github", () => ({
+	...actualGithubService,
 	findGithubById: mockFindGithubById,
 }));
 
-vi.mock("@octokit/auth-app", () => ({
-	createAppAuth: vi.fn(),
+mock.module("@octokit/auth-app", () => ({
+	...actualAuthApp,
+	createAppAuth: jest.fn(),
 }));
 
-vi.mock("octokit", () => ({
+mock.module("octokit", () => ({
+	...actualOctokit,
 	Octokit: class {
 		auth = async () => ({ token: "gh-token" });
 	},
 }));
+
+afterAll(() => {
+	mock.module("@dokploy/server/services/github", () => actualGithubService);
+	mock.module("@octokit/auth-app", () => actualAuthApp);
+	mock.module("octokit", () => actualOctokit);
+});
 
 const { cloneGithubRepository } = await import(
 	"@dokploy/server/utils/providers/github"
@@ -45,7 +72,7 @@ const clone = async () => {
 
 describe("cloneGithubRepository host", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		jest.clearAllMocks();
 	});
 
 	it("clones from github.com for a default provider", async () => {

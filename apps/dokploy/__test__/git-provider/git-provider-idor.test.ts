@@ -1,20 +1,37 @@
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from "bun:test";
 import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDbMock } from "../db-mock";
 
 // Mock the DB so the REAL getAccessibleGitProviderIds (called internally by
 // assertGitProviderAccess) runs against controlled data. Mocking the exported
 // function would NOT intercept the intra-module call, so we mock one layer down.
-const mockDb = vi.hoisted(() => ({
+const mockDb = {
 	query: {
 		gitProvider: {
-			findMany: vi.fn(),
+			findMany: jest.fn(),
 		},
 		member: {
-			findFirst: vi.fn(),
+			findFirst: jest.fn(),
 		},
 	},
-}));
-vi.mock("@dokploy/server/db", () => ({ db: mockDb }));
+};
+
+mock.module("@dokploy/server/db", () => ({ db: mockDb }));
+
+// Put the preload's shape back: `mock.module` is process-global, and this
+// narrow stub would otherwise leave `db` without the tables every later file
+// expects. See __test__/db-mock.ts.
+afterAll(() => {
+	mock.module("@dokploy/server/db", () => createDbMock(jest.fn));
+});
 
 import { assertGitProviderAccess } from "@dokploy/server/services/git-provider";
 
@@ -36,7 +53,7 @@ const providerOther = {
 };
 
 beforeEach(() => {
-	vi.clearAllMocks();
+	jest.clearAllMocks();
 	mockDb.query.gitProvider.findMany.mockResolvedValue([
 		providerMine,
 		providerOther,
