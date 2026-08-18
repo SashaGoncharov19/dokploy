@@ -29,6 +29,78 @@ export const getDokployImageTag = () => {
 	return process.env.RELEASE_TAG || "latest";
 };
 
+/**
+ * The image this installation runs, and updates from.
+ *
+ * This fork publishes to its own GitHub Container Registry. Pointing the update
+ * check at upstream's Docker Hub repository - as the original did - meant the
+ * "Update" button would replace this Bun build with upstream's Node build.
+ */
+export const getDokployImage = () =>
+	process.env.DOKPLOY_IMAGE || "ghcr.io/sashagoncharov19/dokploy-bun";
+
+/**
+ * Digest of a tag, via the OCI distribution API.
+ *
+ * GHCR issues an anonymous bearer token for public images, so no credentials are
+ * needed. Both the OCI and Docker manifest media types are accepted because a
+ * multi-arch tag resolves to an index rather than a manifest.
+ */
+const getRegistryTagDigest = async (
+	image: string,
+	tag: string,
+): Promise<string | null> => {
+	const [registry, ...repoParts] = image.split("/");
+	const repository = repoParts.join("/");
+	if (!registry || !repository) return null;
+
+	const tokenResponse = await fetch(
+		`https://${registry}/token?scope=repository:${repository}:pull`,
+	);
+	if (!tokenResponse.ok) return null;
+	const { token } = (await tokenResponse.json()) as { token?: string };
+	if (!token) return null;
+
+	const manifestResponse = await fetch(
+		`https://${registry}/v2/${repository}/manifests/${tag}`,
+		{
+			headers: {
+				Authorization: `Bearer ${token}`,
+				Accept: [
+					"application/vnd.oci.image.index.v1+json",
+					"application/vnd.docker.distribution.manifest.list.v2+json",
+					"application/vnd.oci.image.manifest.v1+json",
+					"application/vnd.docker.distribution.manifest.v2+json",
+				].join(", "),
+			},
+		},
+	);
+	if (!manifestResponse.ok) return null;
+	return manifestResponse.headers.get("docker-content-digest");
+};
+
+/** Tags published for the image, newest-irrelevant order (registry decides). */
+const getRegistryTags = async (image: string): Promise<string[]> => {
+	const [registry, ...repoParts] = image.split("/");
+	const repository = repoParts.join("/");
+	if (!registry || !repository) return [];
+
+	const tokenResponse = await fetch(
+		`https://${registry}/token?scope=repository:${repository}:pull`,
+	);
+	if (!tokenResponse.ok) return [];
+	const { token } = (await tokenResponse.json()) as { token?: string };
+	if (!token) return [];
+
+	const response = await fetch(
+		`https://${registry}/v2/${repository}/tags/list`,
+		{ headers: { Authorization: `Bearer ${token}` } },
+	);
+	if (!response.ok) return [];
+	const data = (await response.json()) as { tags?: string[] };
+	return data.tags ?? [];
+};
+
 /** Returns Dokploy docker service image digest */
 export const getServiceImageDigest = async () => {
 	const { stdout } = await execAsync(
@@ -44,91 +116,66 @@ export const getServiceImageDigest = async () => {
 	return currentDigest;
 };
 
-/** Returns latest version number and information whether server update is available by comparing current image's digest against digest for provided image tag via Docker hub API. */
+/**
+ * Whether a newer image is published, by comparing the running service's digest
+ * against the registry's.
+ *
+ * Queries the registry this installation actually runs (getDokployImage), not
+ * upstream's Docker Hub repository.
+ */
 export const getUpdateData = async (
 	currentVersion: string,
 ): Promise<IUpdateData> => {
 	try {
-		const baseUrl =
-			"https://hub.docker.com/v2/repositories/dokploy/dokploy/tags";
-		let url: string | null = `${baseUrl}?page_size=100`;
-		let allResults: { digest: string; name: string }[] = [];
-
-		// Fetch all tags from Docker Hub
-		while (url) {
-			const response = await fetch(url, {
-				method: "GET",
-				headers: { "Content-Type": "application/json" },
-			});
-
-			const data = (await response.json()) as {
-				next: string | null;
-				results: { digest: string; name: string }[];
-			};
-
-			allResults = allResults.concat(data.results);
-			url = data?.next;
-		}
-
+		const image = getDokployImage();
 		const currentImageTag = getDokployImageTag();
 
-		// Special handling for canary and feature branches
-		// For development versions (canary/feature), don't perform update checks
-		// These are unstable versions that change frequently, and users on these
-		// branches are expected to manually manage updates
+		// canary and feature tags move constantly, so semver says nothing about
+		// them; compare digests instead.
 		if (currentImageTag === "canary" || currentImageTag === "feature") {
 			const currentDigest = await getServiceImageDigest();
-			const latestDigest = allResults.find(
-				(t) => t.name === currentImageTag,
-			)?.digest;
+			const latestDigest = await getRegistryTagDigest(image, currentImageTag);
 			if (!latestDigest) {
 				return DEFAULT_UPDATE_DATA;
 			}
-			if (currentDigest !== latestDigest) {
-				return {
-					latestVersion: currentImageTag,
-					updateAvailable: true,
-				};
-			}
 			return {
 				latestVersion: currentImageTag,
-				updateAvailable: false,
+				updateAvailable: currentDigest !== latestDigest,
 			};
 		}
 
-		// For stable versions, use semver comparison
-		// Find the "latest" tag and get its digest
-		const latestTag = allResults.find((t) => t.name === "latest");
-
-		if (!latestTag) {
+		// Stable tags: find the version tag pointing at the same digest as `latest`,
+		// then compare semver.
+		const latestDigest = await getRegistryTagDigest(image, "latest");
+		if (!latestDigest) {
 			return DEFAULT_UPDATE_DATA;
 		}
 
-		// Find the versioned tag (v0.x.x) that has the same digest as "latest"
-		const latestVersionTag = allResults.find(
-			(t) => t.digest === latestTag.digest && t.name.startsWith("v"),
-		);
+		const tags = await getRegistryTags(image);
+		const versionTags = tags.filter((t) => t.startsWith("v"));
 
-		if (!latestVersionTag) {
+		let latestVersion: string | null = null;
+		for (const tag of versionTags) {
+			const digest = await getRegistryTagDigest(image, tag);
+			if (digest === latestDigest) {
+				latestVersion = tag;
+				break;
+			}
+		}
+
+		if (!latestVersion) {
 			return DEFAULT_UPDATE_DATA;
 		}
 
-		const latestVersion = latestVersionTag.name;
-
-		// Use semver to compare versions for stable releases
 		const cleanedCurrent = semver.clean(currentVersion);
 		const cleanedLatest = semver.clean(latestVersion);
-
 		if (!cleanedCurrent || !cleanedLatest) {
 			return DEFAULT_UPDATE_DATA;
 		}
 
-		// Check if the latest version is greater than the current version
-		const updateAvailable = semver.gt(cleanedLatest, cleanedCurrent);
-
 		return {
 			latestVersion,
-			updateAvailable,
+			updateAvailable: semver.gt(cleanedLatest, cleanedCurrent),
 		};
 	} catch (error) {
 		console.error("Error fetching update data:", error);
