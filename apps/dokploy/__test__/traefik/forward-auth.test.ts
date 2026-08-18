@@ -1,3 +1,4 @@
+import { beforeAll, describe, expect, test } from "bun:test";
 import type { ApplicationNested, Domain } from "@dokploy/server";
 import {
 	buildForwardAuthEnv,
@@ -7,7 +8,6 @@ import {
 	forwardAuthCallbackUrl,
 	forwardAuthMiddlewareName,
 } from "@dokploy/server";
-import { beforeAll, describe, expect, test } from "vitest";
 
 const app = {
 	appName: "my-app",

@@ -1,6 +1,6 @@
+import { expect, test } from "bun:test";
 import type { ApplicationNested, Domain, Redirect } from "@dokploy/server";
 import { createRouterConfig } from "@dokploy/server";
-import { expect, test } from "vitest";
 
 const baseApp: ApplicationNested = {
 	railpackVersion: "0.15.4",

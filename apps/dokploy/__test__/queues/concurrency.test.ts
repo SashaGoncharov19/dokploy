@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 
-const getWebServerSettings = vi.fn();
-const findFirstServer = vi.fn();
+const getWebServerSettings = jest.fn();
+const findFirstServer = jest.fn();
 
-vi.mock("@dokploy/server/db", () => ({
+mock.module("@dokploy/server/db", () => ({
 	db: {
 		query: {
 			server: {
@@ -13,22 +13,22 @@ vi.mock("@dokploy/server/db", () => ({
 	},
 }));
 
-vi.mock("@dokploy/server/db/schema", () => ({
+mock.module("@dokploy/server/db/schema", () => ({
 	server: {},
 }));
 
-vi.mock("@dokploy/server/services/web-server-settings", () => ({
+mock.module("@dokploy/server/services/web-server-settings", () => ({
 	getWebServerSettings: (...args: unknown[]) => getWebServerSettings(...args),
 }));
 
-vi.mock("drizzle-orm", () => ({ eq: vi.fn() }));
+mock.module("drizzle-orm", () => ({ eq: jest.fn() }));
 
 import { resolveBuildsConcurrency } from "../../server/queues/concurrency";
 import { LOCAL_PARTITION } from "../../server/queues/in-memory-queue";
 
 describe("resolveBuildsConcurrency", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe("local web server partition", () => {

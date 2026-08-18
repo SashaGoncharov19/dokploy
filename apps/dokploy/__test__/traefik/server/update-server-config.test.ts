@@ -1,10 +1,11 @@
 import { fs, vol } from "memfs";
 
-vi.mock("node:fs", () => ({
+mock.module("node:fs", () => ({
 	...fs,
 	default: fs,
 }));
 
+import { beforeEach, expect, mock, test } from "bun:test";
 import type { FileConfig } from "@dokploy/server";
 import {
 	createDefaultServerTraefikConfig,
@@ -12,7 +13,6 @@ import {
 	updateServerTraefik,
 } from "@dokploy/server";
 import type { webServerSettings } from "@dokploy/server/db/schema";
-import { beforeEach, expect, test, vi } from "vitest";
 
 type WebServerSettings = typeof webServerSettings.$inferSelect;
 
