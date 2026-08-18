@@ -1,6 +1,6 @@
+import { expect, test } from "bun:test";
 import type { ComposeSpecification } from "@dokploy/server";
 import { addSuffixToAllConfigs, generateRandomHash } from "@dokploy/server";
-import { expect, test } from "vitest";
 import { parse } from "yaml";
 
 test("Generate random hash with 8 characters", () => {

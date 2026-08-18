@@ -1,8 +1,8 @@
+import { afterEach, describe, expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getCreateEnvFileCommand } from "@dokploy/server/utils/builders/compose";
-import { afterEach, describe, expect, it } from "vitest";
 
 // Regression coverage for https://github.com/Dokploy/dokploy/issues/4694 —
 // values must survive Docker Compose's own `.env` parsing, not just base64 decode.

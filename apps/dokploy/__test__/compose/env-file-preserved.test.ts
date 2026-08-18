@@ -1,12 +1,23 @@
+import { afterAll, describe, expect, it, jest, mock } from "bun:test";
 import { getBuildComposeCommand } from "@dokploy/server/utils/builders/compose";
-import { describe, expect, it, vi } from "vitest";
+import * as domainModule from "@dokploy/server/utils/docker/domain";
 
 // Compose now has a `createEnvFile` toggle (default true), mirroring the
 // Application builder's flag: when disabled, Dokploy never writes `.env`,
 // so a repo-tracked file survives untouched.
-vi.mock("@dokploy/server/utils/docker/domain", () => ({
-	writeDomainsToCompose: vi.fn().mockResolvedValue(""),
+// Snapshot and restore: `mock.module` is process-global, so without the
+// `afterAll` this stub replaces `writeDomainsToCompose` for every later file in
+// the same `bun test` run - which is exactly how it broke
+// domain-command-injection.test.ts, whose assertions depend on the real one.
+const actualDomain = { ...domainModule };
+mock.module("@dokploy/server/utils/docker/domain", () => ({
+	...actualDomain,
+	writeDomainsToCompose: jest.fn().mockResolvedValue(""),
 }));
+
+afterAll(() => {
+	mock.module("@dokploy/server/utils/docker/domain", () => actualDomain);
+});
 
 const baseCompose = {
 	appName: "env-file-toggle",

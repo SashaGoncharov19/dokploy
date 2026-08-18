@@ -1,6 +1,6 @@
+import { expect, test } from "bun:test";
 import type { ComposeSpecification } from "@dokploy/server";
 import { addSuffixToVolumesRoot, generateRandomHash } from "@dokploy/server";
-import { expect, test } from "vitest";
 import { parse } from "yaml";
 
 const composeFile = `
@@ -187,7 +187,7 @@ test("Add suffix to volumes in root property", () => {
 		return;
 	}
 	const volumes = addSuffixToVolumesRoot(composeData.volumes, suffix);
-	const updatedComposeData = { ...composeData, volumes };
+	const updatedComposeData: ComposeSpecification = { ...composeData, volumes };
 
 	// Verificar que el resultado coincide con el archivo esperado
 	expect(updatedComposeData).toEqual(expectedComposeFile4);

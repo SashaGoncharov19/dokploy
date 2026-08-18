@@ -1,8 +1,8 @@
+import { describe, expect, it } from "bun:test";
 import { execSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { createCommand } from "@dokploy/server/utils/builders/compose";
 import { parse, quote } from "shell-quote";
-import { describe, expect, it } from "vitest";
 
 const MARK = `/tmp/dokploy_compose_pwned_${process.pid}`;
 

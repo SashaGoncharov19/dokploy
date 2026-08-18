@@ -1,17 +1,20 @@
+import { describe, expect, it, jest, mock } from "bun:test";
 import { addDomainToCompose } from "@dokploy/server/utils/docker/domain";
-import { execAsyncRemote } from "@dokploy/server/utils/process/execAsync";
-import { describe, expect, it, vi } from "vitest";
+import * as execAsyncModule from "@dokploy/server/utils/process/execAsync";
 
-vi.mock("@dokploy/server/utils/process/execAsync", async (importOriginal) => ({
-	...(await importOriginal<
-		typeof import("@dokploy/server/utils/process/execAsync")
-	>()),
-	execAsyncRemote: vi.fn(),
+// Snapshot before mocking, then keep a handle on the replacement rather than
+// reaching for it through `vi.mocked` afterwards.
+const actualExecAsync = { ...execAsyncModule };
+const execAsyncRemoteMock = jest.fn();
+
+mock.module("@dokploy/server/utils/process/execAsync", () => ({
+	...actualExecAsync,
+	execAsyncRemote: execAsyncRemoteMock,
 }));
 
 describe("raw remote compose conversion (#4794)", () => {
 	it("uses the saved raw source and preserves supported mount syntax", async () => {
-		vi.mocked(execAsyncRemote).mockResolvedValue({
+		execAsyncRemoteMock.mockResolvedValue({
 			stdout: "services:\n  test:\n    image: alpine:latest\n",
 			stderr: "",
 		});
@@ -54,6 +57,6 @@ volumes:
 			},
 		]);
 		expect(converted?.services?.test?.tmpfs).toEqual(["/cache"]);
-		expect(execAsyncRemote).not.toHaveBeenCalled();
+		expect(execAsyncRemoteMock).not.toHaveBeenCalled();
 	});
 });
