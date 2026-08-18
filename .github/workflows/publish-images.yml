@@ -1,0 +1,72 @@
+name: Publish images
+
+# Builds and publishes this fork's images to its own GitHub Container Registry.
+# Upstream's dokploy.yml pushes to Docker Hub under dokploy/* with secrets this
+# fork does not have, so it is disabled here (see the guard in that file).
+#
+# GHCR authenticates with the built-in GITHUB_TOKEN - no secrets to configure.
+
+on:
+  push:
+    branches: [main, canary]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            suffix: ""
+          - dockerfile: Dockerfile.server
+            suffix: "-api"
+          - dockerfile: Dockerfile.schedule
+            suffix: "-schedules"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve tag
+        id: meta
+        run: |
+          # GHCR requires a lowercase image path
+          image="$(echo "${REGISTRY}/${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')${{ matrix.suffix }}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            tag="latest"
+          else
+            tag="canary"
+          fi
+          echo "tags=${image}:${tag},${image}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare env file
+        run: |
+          cp apps/dokploy/.env.production.example .env.production
+          cp apps/dokploy/.env.production.example apps/dokploy/.env.production
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

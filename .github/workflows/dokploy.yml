@@ -1,8 +1,13 @@
 name: Dokploy Docker Build
 
+# Upstream's release pipeline: pushes to Docker Hub under dokploy/*, and syncs
+# versions into dokploy/{mcp,cli,sdk}. Neither is ours to do, and the required
+# secrets do not exist on this fork - so it only runs in the upstream repository.
+# This fork publishes via publish-images.yml instead.
+
 on:
   push:
-    branches: [main, canary, "fix/re-apply-database-migration-fix"]
+    branches: [main, canary]
   workflow_dispatch:
 
 env:
@@ -10,6 +15,7 @@ env:
 
 jobs:
   docker-amd:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -50,6 +56,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
   docker-arm:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout

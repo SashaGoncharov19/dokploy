@@ -129,6 +129,25 @@ Only `build` moved far enough to be a real signal, and the cause is known rather
 guessed: phase 2 deleted the `packages/server` build step, so that is work *removed*, not
 work sped up. `test` and `typecheck` improved, but not yet by enough to claim.
 
+### Docker images
+
+Built from the same commit range, on the same machine.
+
+| Image | Node + pnpm | Bun | |
+|---|---|---|---|
+| api | 1.25GB | **234MB** | **5.3× smaller** |
+| schedules | — | **232MB** | — |
+| main (web app) | 3.25GB | 3.22GB | unchanged |
+
+The api image drops from **1.25GB to 234MB** because it ships **no `node_modules` at
+all** — `bun build` produces a self-contained bundle and extracts the native addons
+beside it, so `dist/` is the whole application.
+
+**The main image is the same size, and that is the honest result.** Its bulk is the
+docker CLI, nixpacks, railpack, buildpacks and rclone — none of which a runtime swap
+touches. Next.js still needs `node_modules` at runtime, so the same trick does not
+apply there.
+
 ### Dependencies and code removed
 
 Removed: `tsx` (×4), `rimraf` (×3), `esbuild` + `esbuild-plugin-alias`, `tsc-alias`,
@@ -172,16 +191,31 @@ Stated plainly, because a benchmark table that omits its gaps is not worth readi
 
 ---
 
-## Trying it
+## Installing
 
-Not yet packaged for installation. Until phase 7 lands, install upstream Dokploy
-normally:
+On a fresh VPS, as root:
 
 ```bash
-curl -sSL https://dokploy.com/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
 ```
 
-To work on this fork:
+The script is upstream's, changed in exactly two ways: images come from this
+repository's GitHub Container Registry (`ghcr.io/sashagoncharov19/dokploy-bun`)
+rather than Docker Hub, and version detection follows **this** repository's
+releases. Both are overridable — `DOKPLOY_IMAGE` and `DOKPLOY_REPO` — if you build
+your own.
+
+To update an existing install:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh -s update
+```
+
+⚠️ **This installs a PaaS that manages Docker on the host.** It initialises Docker
+Swarm, creates an overlay network and writes to `/etc/dokploy`. Run it on a machine
+you intend to dedicate to it, not your laptop.
+
+## Working on it
 
 ```bash
 git clone https://github.com/SashaGoncharov19/dokploy-bun.git

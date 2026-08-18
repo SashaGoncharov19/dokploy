@@ -233,6 +233,26 @@ runner while Next itself executes on Node (`bun --bun` forces otherwise). A cust
 that imports `next()` in-process, as Dokploy does, genuinely runs Next inside Bun — which
 is why this hit us and does not hit those templates.
 
+### Docker image sizes
+
+Same machine, pre-migration commit vs now.
+
+| Image | Node + pnpm | Bun | |
+|---|---|---|---|
+| api | 1.25GB | **234MB** | 5.3× smaller |
+| schedules | — | **232MB** | — |
+| main (web app) | 3.25GB | 3.22GB | **unchanged** |
+
+The service images collapse because `bun build` emits a self-contained bundle and
+extracts the native addons next to it, so the runtime image ships `dist/` and nothing
+else — no `node_modules`.
+
+The main image does **not** shrink, and that is worth stating rather than omitting: its
+bulk is the docker CLI, nixpacks, railpack, buildpacks, rclone and git-lfs. A runtime
+swap cannot touch any of that, and Next.js still needs `node_modules` at runtime, so the
+self-contained trick does not apply. Anyone expecting "Bun makes images smaller" as a
+general claim should look at these two rows and take the specific one.
+
 ### `apps/schedules` had been broken since phase 2, and nothing caught it
 
 `bun build --packages=external` leaves every `node_modules` import external. For these
