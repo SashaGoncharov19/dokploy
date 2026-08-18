@@ -233,6 +233,58 @@ runner while Next itself executes on Node (`bun --bun` forces otherwise). A cust
 that imports `next()` in-process, as Dokploy does, genuinely runs Next inside Bun — which
 is why this hit us and does not hit those templates.
 
+### `apps/schedules` had been broken since phase 2, and nothing caught it
+
+`bun build --packages=external` leaves every `node_modules` import external. For these
+two services the workspace package `@dokploy/server` gets inlined from source, but *its*
+transitive imports stay external — and Bun's isolated `node_modules` layout only links a
+package's own declared dependencies, so they are not resolvable from the consuming app:
+
+```
+error: Cannot find package 'nanoid' from apps/schedules/dist/index.js
+```
+
+Confirmed against `canary` before assigning blame: **the same failure reproduces there**,
+so it arrived with phase 2 and survived phases 3, 4 and 5. Typecheck, build and the test
+suite were all green throughout, because none of them start the service.
+
+Second instance of the same process gap as the dev server. The rule earned twice now:
+**a build artifact is not verified until something has executed it.** Both services are
+now booted and health-checked as part of verification, not just built.
+
+The fix is to drop `--packages=external` and ship a self-contained bundle. Bun extracts
+native addons alongside the output automatically:
+
+```
+index.js                   11.31 MB
+cpufeatures-bkg5m6qf.node  61.66 KB
+sshcrypto-9g7gcmhy.node   115.23 KB
+```
+
+Larger than the 8 KB externalised stub, but it actually runs — and it removes the need to
+ship `node_modules` in the images at all, which phase 7 can take advantage of.
+
+`apps/api` had the identical latent fragility; it happened to boot only because its own
+externals were satisfiable. Both are self-contained now.
+
+### Dependency cleanup: what could and could not go
+
+| Dependency | Verdict |
+|---|---|
+| `@hono/node-server` | **removed** — `export default { fetch, port }` is Bun's own contract |
+| `dotenv` as an env *loader* | **removed** — Bun reads `.env` itself |
+| `dotenv` as a *parser* | **kept** — `utils/docker/utils.ts` uses `parse()` on user-supplied env files, and Bun exposes no equivalent |
+| `redis` (apps/api) | **removed** — no live import; the only mention was a comment |
+| `ioredis` (apps/schedules) | **removed as a direct dep** — `bullmq` declares it and creates its own client from the `connection` config |
+| `undici` | **kept deliberately** — see below |
+
+`undici` exists in `utils/schema.ts` to polyfill `globalThis.File` and `globalThis.FileList`
+server-side. Bun provides `File` natively but **not `FileList`**. `FileList` appears only in
+client components, where the browser supplies it, and `zod-form-data` never references it —
+so the polyfill looks removable. It was left in place anyway: the failure mode is a
+`ReferenceError` on a file-upload path that the test suite does not cover, and removing
+something whose absence cannot be verified is not worth one dependency.
+
 ### `next build` spawns Node workers — `--bun` is required
 
 The most transferable finding of the whole migration.
