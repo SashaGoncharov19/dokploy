@@ -1,26 +1,28 @@
+import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ApplicationNested } from "@dokploy/server";
 import { unzipDrop } from "@dokploy/server";
-import { paths } from "@dokploy/server/constants";
+import * as constants from "@dokploy/server/constants";
 import AdmZip from "adm-zip";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const OUTPUT_BASE = "./__test__/drop/zips/output";
-const { APPLICATIONS_PATH } = paths();
-vi.mock("@dokploy/server/constants", async (importOriginal) => {
-	const actual = await importOriginal();
-	return {
-		// @ts-ignore
-		...actual,
-		paths: () => ({
-			// @ts-ignore
-			...actual.paths(),
-			BASE_PATH: OUTPUT_BASE,
-			APPLICATIONS_PATH: OUTPUT_BASE,
-		}),
-	};
-});
+
+// `mock.module` is not hoisted the way `vi.mock` was, so it has to run before
+// anything calls `paths()` - including the destructure below. Reversed, that
+// destructure resolves to the real applications directory, which the fixtures
+// then delete recursively.
+const actual = { ...constants };
+mock.module("@dokploy/server/constants", () => ({
+	...actual,
+	paths: () => ({
+		...actual.paths(),
+		BASE_PATH: OUTPUT_BASE,
+		APPLICATIONS_PATH: OUTPUT_BASE,
+	}),
+}));
+
+const { APPLICATIONS_PATH } = constants.paths();
 
 if (typeof window === "undefined") {
 	const undici = require("undici");
