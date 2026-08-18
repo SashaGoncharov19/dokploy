@@ -24,7 +24,13 @@ afterAll(() => {
 	mock.module("node:fs", () => ({ ...actualFs, default: actualFs }));
 });
 
-import { writeDomainsToCompose } from "@dokploy/server/utils/docker/domain";
+// Imported dynamically, after the mock. A static import is hoisted, and by the
+// time `mock.module` runs the module under test has already bound `existsSync`
+// from the real `node:fs` - for a native builtin that binding does not update.
+// `vi.mock` did not need this because it was hoisted above the imports.
+const { writeDomainsToCompose } = await import(
+	"@dokploy/server/utils/docker/domain"
+);
 
 const baseCompose = {
 	appName: "my-app",
