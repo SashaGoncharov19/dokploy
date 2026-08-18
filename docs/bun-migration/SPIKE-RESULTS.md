@@ -505,3 +505,112 @@ locally under a swarm, so they are unverified rather than known-good — `docker
 init` changes the host Docker daemon globally, which is not something to do
 unilaterally on a dev machine. To close the gap: `docker swarm init && docker network
 create --driver overlay dokploy-network`, re-run, then `docker swarm leave --force`.
+
+---
+
+## Runtime — the Bun image against the Node baseline
+
+Everything above measures the toolchain: install, CI wall-time, image build. None of
+it says anything about the server once it is running, which is the question that
+decides whether the migration was worth doing. This section measures that.
+
+Harness: [`scripts/runtime-benchmark.ts`](../../scripts/runtime-benchmark.ts). It
+builds its own PostgreSQL and containers, runs every phase, and tears the whole thing
+down again, so these numbers can be re-run rather than taken on trust.
+
+**Setup.** One host (macOS arm64, Docker 29.4.0), one PostgreSQL 16 container, one
+database per image. `oha` generates load from the host, so the generator is identical
+for both. The Docker socket is deliberately *not* mounted: both images therefore fail
+`initializeNetwork()` in exactly the same way, and both still serve HTTP, because
+`server.listen()` runs before that call in `server.ts`.
+
+**What is comparable here, and what is not.** `/register` renders byte-identical
+output from both images — 32175 bytes, `__NEXT_DATA__` present — so the request path
+being measured is the same code doing the same work. What is *not* identical is the
+rest of the tree: the Node image is built from the **pre-migration commit**, because
+a Node build of today's tree no longer exists. Licence removal, the branding defaults
+and migration 0186 are in the Bun image and not the Node one. None of them touch
+these code paths, but this is a fork-against-ancestor comparison, not a pure runtime
+swap, and should not be quoted as one.
+
+### Results
+
+Medians, with the first run of each series discarded — the first start after an image
+has been idle pays host page-cache costs the later ones do not.
+
+| Metric | Node baseline | Bun | |
+|---|---|---|---|
+| Cold boot — empty DB, 186 migrations applied (n=4) | 4720ms | **3411ms** | 1.4× faster |
+| Warm start — already-migrated DB (n=10) | 4244ms (σ 718) | **3345ms** (σ 332) | 1.3× faster |
+| Shutdown — `docker stop` to exited (n=10) | 3019ms (σ 740) | **318ms** (σ 182) | **9.5× faster** |
+| Idle RSS, 60s settle | 753.0 MiB | **625.5 MiB** | 17% lower |
+| RSS after the load runs below | 1314.8 MiB | **759.7 MiB** | 42% lower |
+| `/api/health` — 30s, 50 concurrent | 8855 rps, p50 4.56ms | 8681 rps, p50 4.22ms | no difference |
+| `/register` SSR — 30s, 20 concurrent | 780 rps, p50 23.28ms | 745 rps, p50 24.64ms | no difference |
+
+Both load runs completed at 100% success.
+
+### Throughput did not move, and that is the honest headline
+
+Neither endpoint changed outside noise — 2% on `/api/health`, 4% on SSR, each from a
+single 30-second run, and in both cases the *baseline* is nominally ahead. The request
+path is bounded by Next.js and React rendering, not by the JavaScript engine
+underneath, so swapping the engine does not move it. Anyone repeating "Bun is faster"
+as a general claim about this migration should be shown these two rows first.
+
+### Shutdown is the row that pays for itself
+
+3019ms → 318ms is the largest effect measured anywhere in this migration, and it is
+not academic. `install.sh` creates the service with `--update-order stop-first`, so
+every single Dokploy update waits for this shutdown before the new task starts. The
+Node baseline also swings between 1834ms and 4156ms; the Bun build sits at 250–894ms.
+
+Faster *and* an order of magnitude more predictable, on the one path that runs during
+every upgrade.
+
+### Startup: real, but smaller than one run made it look
+
+An earlier five-repetition pass had the Node baseline *winning* warm start at 2826ms
+against 3340ms. It was wrong. Node's warm start is bimodal — it lands near 2800ms or
+near 4300ms with nothing in between — and five samples happened to catch two of the
+fast ones. Extending to eleven and dropping the warm-up reversed the result: 4244ms
+against 3345ms.
+
+Recorded because the failure mode is the point. The measurement was not noisy in a way
+that looked noisy; it was stable enough to read as a finding and still wrong. The
+standard deviations are the tell — 718ms against 332ms.
+
+### Memory is genuinely lower, but read RSS carefully
+
+Idle is 17% lower. The post-load figure is the striking one: under identical load the
+Node baseline grew ~562 MiB and did not give it back, where the Bun build grew ~134 MiB.
+
+That is memory **held**, not memory **needed**. V8 and JavaScriptCore have different
+heap-growth and collection strategies, and neither runtime was asked to collect before
+the sample was taken. It is what an operator sees in `docker stats`, which is why it
+is worth recording — but it is not evidence of a leak in either build.
+
+### Image sizes, re-measured alongside
+
+| Image | Node + pnpm | Bun | |
+|---|---|---|---|
+| main (web app) | 3.25GB, 22 layers | 3.22GB, 25 layers | unchanged |
+| api | 1.25GB, 11 layers | 234MB, 8 layers | 5.3× smaller |
+| schedules | — | 232MB, 8 layers | — |
+
+Same figures as the earlier table, in the decimal units `docker images` prints; the
+layer counts are new.
+
+Same conclusion as before: the service images collapse because `bun build` emits a
+self-contained bundle, and the main image does not, because its bulk is the docker
+CLI, nixpacks, railpack, buildpacks, rclone and git-lfs — none of which a runtime swap
+can touch.
+
+### Summary
+
+Three real wins, one large one, and one non-result:
+
+- **Shutdown 9.5× faster**, on the critical path of every update.
+- **Memory 17% lower idle, 42% lower after load.**
+- **Boot 1.3–1.4× faster**, cold and warm.
+- **Throughput unchanged.** Not a regression, not a win.
