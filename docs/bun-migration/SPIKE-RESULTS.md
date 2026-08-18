@@ -614,3 +614,52 @@ Three real wins, one large one, and one non-result:
 - **Memory 17% lower idle, 42% lower after load.**
 - **Boot 1.3–1.4× faster**, cold and warm.
 - **Throughput unchanged.** Not a regression, not a win.
+
+---
+
+## Where the 626 MiB of idle memory actually goes
+
+Measured inside the running container rather than inferred, because the obvious
+levers turn out to do nothing.
+
+| Stage | RSS |
+|---|---|
+| bare `bun` process | 38 MB |
+| `+ import("next")` | 66 MB |
+| `+ import("@dokploy/server")` | **450 MB** |
+| full server at rest | 637 MB |
+| after loading 11 dashboard pages | 661 MB |
+
+**`bun --smol` changes nothing** - 627.0 MB against 626.6 MB. That is the useful
+negative result: `--smol` shrinks the JS heap, so if it does not help, the memory
+is not heap pressure the GC could relieve. Confirmed by the process map: 640 MB
+of the RSS is anonymous, only 47 MB file-backed.
+
+The cost is concentrated in one import. Breaking it down:
+
+| Module | RSS added |
+|---|---|
+| `@dokploy/server/db` | **169 MB** |
+| `better-auth` | 37 MB |
+| `dockerode` | 27 MB |
+| `drizzle-zod` | 22 MB |
+| `drizzle-orm` | 9 MB |
+| `ssh2` | 2 MB |
+
+`db/index.ts` hands the entire schema to `drizzle(dbUrl, { schema })` so the
+relational query API (`db.query.*`) works, and the schema is 7527 lines across
+67 tables with 72 `createSelectSchema`/`createInsertSchema` calls evaluated at
+module load. That is the 169 MB, and it is one copy - not the duplication the
+comment in that file warns about.
+
+Checked that specifically: loading eleven dashboard pages grew RSS by 26 MB,
+about 2.4 MB per page. If each Next page chunk carried its own copy of the
+schema the growth would be far larger, so `transpilePackages` is not multiplying
+it.
+
+**Nothing here is a leak, and nothing is obviously wasteful.** Reducing it means
+either not giving drizzle the full schema - which removes `db.query.*` - or
+making 72 zod schema generations lazy across upstream schema files. Both are
+wide changes to files this fork otherwise leaves alone, so neither was made.
+Recorded so the next person does not spend the afternoon rediscovering that
+`--smol` is not the answer.
