@@ -1,6 +1,6 @@
 import type { OverviewService } from "@dokploy/server/services/overview";
 import { sortOverviewServices } from "@dokploy/server/services/overview";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 
 const makeService = (overrides: Partial<OverviewService>): OverviewService => ({
 	id: "id",

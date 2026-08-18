@@ -5,7 +5,22 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	test: {
 		include: ["__test__/**/*.test.ts"], // Incluir solo los archivos de test en el directorio __test__
-		exclude: ["**/node_modules/**", "**/dist/**", "**/.docker/**"],
+		// Directories ported to `bun test` - see the test:bun script. Porting a
+		// directory means moving it from here into that script's list.
+		exclude: [
+			"**/node_modules/**",
+			"**/dist/**",
+			"**/.docker/**",
+			"**/__test__/logs/**",
+			"**/__test__/registry/**",
+			"**/__test__/requests/**",
+			"**/__test__/api/**",
+			"**/__test__/cluster/**",
+			"**/__test__/templates/**",
+			"**/__test__/backups/**",
+			"**/__test__/services/**",
+			"**/__test__/utils/**",
+		],
 		pool: "forks",
 		setupFiles: [path.resolve(__dirname, "setup.ts")],
 	},

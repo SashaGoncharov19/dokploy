@@ -43,7 +43,7 @@ The migration is [planned in nine phases](docs/bun-migration/PLAN.md). **Four ar
 | 5 | Native APIs — `Bun.Terminal` ✅ done, `Bun.password`/`Bun.sql` pending | 🟡 partial |
 | 6 | Dependency cleanup | ⬜ |
 | 7 | Docker + CI | ⬜ |
-| 9 | Tests: vitest → `bun test`, gradually | ⬜ |
+| 9 | Tests: vitest → `bun test`, gradually | 🟡 18 of 96 files ported |
 
 > **The web app now runs on Bun**, in production and in dev — verified against a real
 > database, with SSR, tRPC and WebSockets all responding. There are still no runtime
@@ -58,6 +58,10 @@ The migration is [planned in nine phases](docs/bun-migration/PLAN.md). **Four ar
 **All 874 tests pass on Bun in CI** — deploys, traefik, SSH, docker, compose, backups,
 permissions. This is the single most useful data point so far, and it is stronger than
 any timing number.
+
+18 of those files now run on `bun test` rather than vitest (193 tests). The rest stay on
+vitest until ported; `bun run test` runs both, and the two scopes are kept complementary
+so nothing silently stops running.
 
 ### The application runs on Bun, end to end
 

@@ -1,5 +1,5 @@
 import { redactRcloneCredentials } from "@dokploy/server/utils/backups/redact";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("redactRcloneCredentials (#4621)", () => {
 	it("should redact access key in rclone command", () => {

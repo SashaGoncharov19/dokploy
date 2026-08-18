@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { API_KEY_NAME_MAX_LENGTH, apiKeyNameSchema } from "@/lib/api-keys";
 
 describe("apiKeyNameSchema", () => {

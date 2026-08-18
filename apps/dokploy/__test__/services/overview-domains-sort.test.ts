@@ -1,6 +1,6 @@
 import type { OverviewDomain } from "@dokploy/server/services/overview";
 import { sortOverviewDomains } from "@dokploy/server/services/overview";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 
 const makeDomain = (overrides: Partial<OverviewDomain>): OverviewDomain => ({
 	domainId: "id",

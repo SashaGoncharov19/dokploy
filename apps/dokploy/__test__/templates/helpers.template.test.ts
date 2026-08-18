@@ -1,6 +1,6 @@
 import type { Schema } from "@dokploy/server/templates";
 import { processValue } from "@dokploy/server/templates/processors";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("helpers functions", () => {
 	// Mock schema for testing
