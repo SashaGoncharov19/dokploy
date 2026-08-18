@@ -8,12 +8,14 @@ import {
 	getDokployUrl,
 	getUserByToken,
 	getWebServerSettings,
+	hashPasswordSync,
 	IS_CLOUD,
 	removeUserById,
 	renderInvitationEmail,
 	sendEmailNotification,
 	sendResendNotification,
 	updateUser,
+	verifyPasswordSync,
 } from "@dokploy/server";
 import { db } from "@dokploy/server/db";
 import {
@@ -31,9 +33,7 @@ import {
 	hasPermission,
 	resolvePermissions,
 } from "@dokploy/server/services/permission";
-import { hasValidLicense } from "@dokploy/server/services/proprietary/license-key";
 import { TRPCError } from "@trpc/server";
-import { hashPasswordSync, verifyPasswordSync } from "@dokploy/server";
 import { and, asc, desc, eq, gt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { apiKeyNameSchema } from "@/lib/api-keys";
@@ -475,20 +475,14 @@ export const userRouter = createTRPCRouter({
 
 				const { id, accessedGitProviders, accessedServers, ...rest } = input;
 
-				const licensed = await hasValidLicense(
-					ctx.session?.activeOrganizationId || "",
-				);
-
 				await db
 					.update(member)
 					.set({
 						...rest,
-						...(licensed && accessedGitProviders !== undefined
+						...(accessedGitProviders !== undefined
 							? { accessedGitProviders }
 							: {}),
-						...(licensed && accessedServers !== undefined
-							? { accessedServers }
-							: {}),
+						...(accessedServers !== undefined ? { accessedServers } : {}),
 					})
 					.where(
 						and(

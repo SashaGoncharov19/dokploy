@@ -76,39 +76,23 @@ export function EnterpriseFeatureLocked({
 
 interface EnterpriseFeatureGateProps {
 	children: React.ReactNode;
-	/** Props for the locked state when license is invalid */
+	/** Unused: kept so call sites do not have to change. */
 	lockedProps?: Omit<EnterpriseFeatureLockedProps, "compact">;
-	/** Show loading spinner while checking license */
+	/** Unused: kept so call sites do not have to change. */
 	fallback?: React.ReactNode;
 }
 
 /**
- * Renders children only when the instance has a valid enterprise license.
- * Otherwise shows EnterpriseFeatureLocked.
+ * Renders its children.
+ *
+ * Licensing is removed in this fork, so there is nothing to gate. The component
+ * stays as a pass-through rather than being deleted, because unwrapping it would
+ * mean JSX surgery across five call sites for no behavioural gain.
+ * EnterpriseFeatureLocked above is still exported: add-permissions.tsx references
+ * it from a branch that is now unreachable.
  */
 export function EnterpriseFeatureGate({
 	children,
-	lockedProps,
-	fallback,
 }: EnterpriseFeatureGateProps) {
-	const { data: haveValidLicense, isPending } =
-		api.licenseKey.haveValidLicenseKey.useQuery();
-
-	if (isPending) {
-		if (fallback) return <>{fallback}</>;
-		return (
-			<div className="flex items-center gap-2 justify-center min-h-[25vh]">
-				<Loader2 className="size-6 text-muted-foreground animate-spin" />
-				<span className="text-sm text-muted-foreground">
-					Checking license...
-				</span>
-			</div>
-		);
-	}
-
-	if (!haveValidLicense) {
-		return <EnterpriseFeatureLocked {...lockedProps} />;
-	}
-
 	return <>{children}</>;
 }

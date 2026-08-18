@@ -50,9 +50,9 @@ Postgres, Traefik and your own containers are running.
 
 ## Features
 
-Everything upstream Dokploy does, and all of it available — this build ships no licence
-gating, so white-labelling, SSO, SCIM, custom roles, audit logs and forward-auth are on
-by default.
+Everything upstream Dokploy does, and all of it available. There is no licence gating in
+this build — white-labelling, SSO, SCIM, custom roles, audit logs and forward-auth work
+out of the box, and nothing contacts a licence server.
 
 - **Applications** in any language — Node, PHP, Python, Go, Ruby, Rust
 - **Databases** — PostgreSQL, MySQL, MariaDB, MongoDB, Redis, libsql, with scheduled backups
@@ -103,7 +103,8 @@ sustained production traffic, and this README will not claim otherwise.
 
 Running and verified on arm64 hardware: all six WebSocket features (container terminal
 and logs, server terminal, deployment console, monitoring, drawer logs), registration,
-the migration chain, and a multi-service Compose deployment.
+the migration chain, and real workloads — a multi-service Compose stack and a Gitea
+instance, both deployed and serving.
 
 The full test suite — 874 tests — passes on Bun in CI.
 

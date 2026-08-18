@@ -1,9 +1,5 @@
 import { db } from "@dokploy/server/db";
-import {
-	hasValidLicense,
-	IS_CLOUD,
-	sendInvitationEmail,
-} from "@dokploy/server/index";
+import { IS_CLOUD, sendInvitationEmail } from "@dokploy/server/index";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, exists } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -195,14 +191,6 @@ export const organizationRouter = createTRPCRouter({
 						throw new TRPCError({
 							code: "NOT_FOUND",
 							message: `Role "${input.defaultRole}" not found`,
-						});
-					}
-
-					if (!(await hasValidLicense(input.organizationId))) {
-						throw new TRPCError({
-							code: "FORBIDDEN",
-							message:
-								"Setting a custom role as default requires a valid enterprise license",
 						});
 					}
 				}

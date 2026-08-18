@@ -5,7 +5,6 @@ import {
 	organization,
 	server,
 } from "@dokploy/server/db/schema";
-import { hasValidLicense } from "@dokploy/server/services/proprietary/license-key";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
@@ -180,11 +179,8 @@ export const getAccessibleServerIds = async (session: {
 		return new Set(allOrgServers.map((s) => s.serverId));
 	}
 
-	const licensed = await hasValidLicense(activeOrganizationId);
-
-	if (!licensed) {
-		return new Set(allOrgServers.map((s) => s.serverId));
-	}
-
+	// Per-member server scoping is always active. Migration 0186 seeded
+	// accessedServers for members that predate it, so nobody lost visibility when
+	// licensing was removed.
 	return new Set(memberRecord?.accessedServers ?? []);
 };

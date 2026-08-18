@@ -444,20 +444,7 @@ const createBetterAuth = () =>
 				references: "user",
 			}),
 			sso({ trustEmailVerified: true }),
-			scim({
-				beforeSCIMTokenGenerated: async ({ user }) => {
-					const dbUser = await db.query.user.findFirst({
-						where: eq(schema.user.id, user.id),
-						columns: { enableEnterpriseFeatures: true },
-					});
-
-					if (!dbUser?.enableEnterpriseFeatures) {
-						throw new APIError("FORBIDDEN", {
-							message: "SCIM provisioning requires an enterprise license",
-						});
-					}
-				},
-			}),
+			scim(),
 			twoFactor(),
 			passkey(),
 			organization({
