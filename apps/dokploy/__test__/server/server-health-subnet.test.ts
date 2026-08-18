@@ -1,5 +1,5 @@
+import { describe, expect, test } from "bun:test";
 import { getSubnetCapacity } from "@dokploy/server/services/server-health";
-import { describe, expect, test } from "vitest";
 
 describe("getSubnetCapacity", () => {
 	test("returns null for missing/invalid input", () => {

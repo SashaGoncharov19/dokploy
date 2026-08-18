@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { redactServerSshKey } from "@dokploy/server/services/server";
-import { describe, expect, it } from "vitest";
 
 describe("redactServerSshKey (server SSH private key disclosure guard)", () => {
 	it("blanks the private key while keeping the rest of the ssh key intact", () => {

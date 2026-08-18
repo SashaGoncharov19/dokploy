@@ -1,6 +1,6 @@
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 import type { ApplicationNested } from "@dokploy/server/utils/builders";
 import { mechanizeDockerContainer } from "@dokploy/server/utils/builders";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type MockCreateServiceOptions = {
 	TaskTemplate?: {
@@ -12,26 +12,20 @@ type MockCreateServiceOptions = {
 	[key: string]: unknown;
 };
 
-const { inspectMock, getServiceMock, createServiceMock, getRemoteDockerMock } =
-	vi.hoisted(() => {
-		const inspect = vi.fn<() => Promise<never>>();
-		const getService = vi.fn(() => ({ inspect }));
-		const createService = vi.fn<
-			(opts: MockCreateServiceOptions) => Promise<void>
-		>(async () => undefined);
-		const getRemoteDocker = vi.fn(async () => ({
-			getService,
-			createService,
-		}));
-		return {
-			inspectMock: inspect,
-			getServiceMock: getService,
-			createServiceMock: createService,
-			getRemoteDockerMock: getRemoteDocker,
-		};
-	});
+// `vi.hoisted` existed only to make these reachable from a hoisted `vi.mock`
+// factory. `mock.module` runs in source order, so plain consts declared above
+// the call are enough.
+const inspectMock = jest.fn<() => Promise<never>>();
+const getServiceMock = jest.fn(() => ({ inspect: inspectMock }));
+const createServiceMock = jest.fn<
+	(opts: MockCreateServiceOptions) => Promise<void>
+>(async () => undefined);
+const getRemoteDockerMock = jest.fn(async () => ({
+	getService: getServiceMock,
+	createService: createServiceMock,
+}));
 
-vi.mock("@dokploy/server/utils/servers/remote-docker", () => ({
+mock.module("@dokploy/server/utils/servers/remote-docker", () => ({
 	getRemoteDocker: getRemoteDockerMock,
 }));
 
