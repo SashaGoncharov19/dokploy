@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from "bun:test";
+import { afterAll, describe, expect, it, mock } from "bun:test";
 import path from "node:path";
 import * as constants from "@dokploy/server/constants";
 
@@ -20,6 +20,12 @@ mock.module("@dokploy/server/constants", () => ({
 
 // Import after mock so paths() uses our BASE
 const { readValidDirectory } = await import("@dokploy/server");
+
+// Same reason as drop.test.ts: put the real `paths()` back so this file's BASE
+// does not follow the rest of the run.
+afterAll(() => {
+	mock.module("@dokploy/server/constants", () => actual);
+});
 
 describe("readValidDirectory (path traversal)", () => {
 	it("returns true when directory is exactly BASE_PATH", () => {

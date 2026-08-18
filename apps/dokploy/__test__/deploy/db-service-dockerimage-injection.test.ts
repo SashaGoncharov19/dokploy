@@ -1,7 +1,7 @@
+import { describe, expect, it } from "bun:test";
 import { execSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { parse, quote } from "shell-quote";
-import { describe, expect, it } from "vitest";
 
 // The six database deploy functions (postgres/mysql/mariadb/mongo/redis/libsql)
 // build `docker pull ${quote([dockerImage])}` for the remote (execAsyncRemote)

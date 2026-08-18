@@ -1,25 +1,54 @@
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from "bun:test";
+import * as serverBarrel from "@dokploy/server";
+import * as octokitWebhooks from "@octokit/webhooks";
+import * as drizzleOrm from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as dbSchema from "@/server/db/schema";
+import * as queueSetup from "@/server/queues/queueSetup";
+import * as deployUtil from "@/server/utils/deploy";
+import { createDbMock } from "../db-mock";
 
-const mocks = vi.hoisted(() => ({
-	eq: vi.fn((field: string, value: unknown) => ({ field, value })),
-	and: vi.fn((...conditions: Array<{ field: string; value: unknown }>) => ({
+// Snapshot every module before replacing it. `mock.module` is process-global
+// and `mock.restore()` does not undo it, so a narrow stub of `drizzle-orm` or
+// the `@dokploy/server` barrel would change every later file in the run.
+const actual = {
+	drizzleOrm: { ...drizzleOrm },
+	dbSchema: { ...dbSchema },
+	serverBarrel: { ...serverBarrel },
+	octokitWebhooks: { ...octokitWebhooks },
+	queueSetup: { ...queueSetup },
+	deployUtil: { ...deployUtil },
+};
+
+const mocks = {
+	eq: jest.fn((field: string, value: unknown) => ({ field, value })),
+	and: jest.fn((...conditions: Array<{ field: string; value: unknown }>) => ({
 		conditions,
 	})),
-	githubFindFirst: vi.fn(),
-	applicationsFindMany: vi.fn(),
-	composeFindMany: vi.fn(),
-	queueAdd: vi.fn(),
-	verify: vi.fn(),
-	shouldDeploy: vi.fn(),
-}));
+	githubFindFirst: jest.fn(),
+	applicationsFindMany: jest.fn(),
+	composeFindMany: jest.fn(),
+	queueAdd: jest.fn(),
+	verify: jest.fn(),
+	shouldDeploy: jest.fn(),
+};
 
-vi.mock("drizzle-orm", () => ({
+mock.module("drizzle-orm", () => ({
+	...actual.drizzleOrm,
 	eq: mocks.eq,
 	and: mocks.and,
 }));
 
-vi.mock("@/server/db/schema", () => ({
+mock.module("@/server/db/schema", () => ({
+	...actual.dbSchema,
 	applications: {
 		sourceType: "application.sourceType",
 		autoDeploy: "application.autoDeploy",
@@ -44,7 +73,7 @@ vi.mock("@/server/db/schema", () => ({
 	},
 }));
 
-vi.mock("@dokploy/server/db", () => ({
+mock.module("@dokploy/server/db", () => ({
 	db: {
 		query: {
 			github: {
@@ -60,38 +89,52 @@ vi.mock("@dokploy/server/db", () => ({
 	},
 }));
 
-vi.mock("@dokploy/server", () => ({
+mock.module("@dokploy/server", () => ({
+	...actual.serverBarrel,
 	IS_CLOUD: false,
 	shouldDeploy: mocks.shouldDeploy,
-	checkUserRepositoryPermissions: vi.fn(),
-	createPreviewDeployment: vi.fn(),
-	createSecurityBlockedComment: vi.fn(),
-	findGithubById: vi.fn(),
-	findPreviewDeploymentByApplicationId: vi.fn(),
-	findPreviewDeploymentsByPullRequestId: vi.fn(),
-	getBitbucketHeaders: vi.fn(() => ({})),
-	removePreviewDeployment: vi.fn(),
+	checkUserRepositoryPermissions: jest.fn(),
+	createPreviewDeployment: jest.fn(),
+	createSecurityBlockedComment: jest.fn(),
+	findGithubById: jest.fn(),
+	findPreviewDeploymentByApplicationId: jest.fn(),
+	findPreviewDeploymentsByPullRequestId: jest.fn(),
+	getBitbucketHeaders: jest.fn(() => ({})),
+	removePreviewDeployment: jest.fn(),
 }));
 
-vi.mock("@octokit/webhooks", () => ({
-	Webhooks: vi.fn().mockImplementation(function Webhooks() {
+mock.module("@octokit/webhooks", () => ({
+	...actual.octokitWebhooks,
+	Webhooks: jest.fn().mockImplementation(function Webhooks() {
 		return {
 			verify: mocks.verify,
 		};
 	}),
 }));
 
-vi.mock("@/server/queues/queueSetup", () => ({
+mock.module("@/server/queues/queueSetup", () => ({
+	...actual.queueSetup,
 	myQueue: {
 		add: mocks.queueAdd,
 	},
 }));
 
-vi.mock("@/server/utils/deploy", () => ({
-	deploy: vi.fn(),
+mock.module("@/server/utils/deploy", () => ({
+	...actual.deployUtil,
+	deploy: jest.fn(),
 }));
 
-import handler from "@/pages/api/deploy/github";
+const { default: handler } = await import("@/pages/api/deploy/github");
+
+afterAll(() => {
+	mock.module("drizzle-orm", () => actual.drizzleOrm);
+	mock.module("@/server/db/schema", () => actual.dbSchema);
+	mock.module("@dokploy/server", () => actual.serverBarrel);
+	mock.module("@octokit/webhooks", () => actual.octokitWebhooks);
+	mock.module("@/server/queues/queueSetup", () => actual.queueSetup);
+	mock.module("@/server/utils/deploy", () => actual.deployUtil);
+	mock.module("@dokploy/server/db", () => createDbMock(jest.fn));
+});
 
 const getConditionValue = (
 	where: { conditions?: Array<{ field: string; value: unknown }> } | undefined,
@@ -100,11 +143,11 @@ const getConditionValue = (
 
 const createResponse = () => {
 	const res = {
-		status: vi.fn(),
-		json: vi.fn(),
+		status: jest.fn(),
+		json: jest.fn(),
 	} as unknown as NextApiResponse & {
-		status: ReturnType<typeof vi.fn>;
-		json: ReturnType<typeof vi.fn>;
+		status: ReturnType<typeof jest.fn>;
+		json: ReturnType<typeof jest.fn>;
 	};
 
 	res.status.mockImplementation(() => res);
@@ -159,7 +202,7 @@ const createTagRequest = (tagName: string) => {
 
 describe("GitHub app webhook auto-deploy", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		jest.clearAllMocks();
 		mocks.githubFindFirst.mockResolvedValue({
 			githubId: "github-provider-id",
 			githubInstallationId: 12345,

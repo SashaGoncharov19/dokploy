@@ -24,6 +24,14 @@ mock.module("@dokploy/server/constants", () => ({
 
 const { APPLICATIONS_PATH } = constants.paths();
 
+// `mock.module` is process-global, so this redirected `paths()` for every later
+// file in the run - which sent the deploy suite's real builds into
+// __test__/drop/zips/output. vitest never needed this: `pool: "forks"` gave each
+// file its own registry.
+afterAll(() => {
+	mock.module("@dokploy/server/constants", () => actual);
+});
+
 if (typeof window === "undefined") {
 	const undici = require("undici");
 	globalThis.File = undici.File as any;
