@@ -156,12 +156,65 @@ Note that `bun test` will happily execute a file that imports from `"vitest"` �
 directory can appear ported when it is not. Rewrite the imports to `bun:test` as part
 of the port, so the runner is visible in the file.
 
-When porting, `vi.mock` → `mock.module` is **not** a rename. `vi.mock` is hoisted
-above imports; `mock.module` is not, so a module already imported at the top of the
-file will not be replaced — and the test then passes while asserting nothing.
+When porting, `vi.mock` → `mock.module` is **not** a rename. Three differences bite,
+all measured rather than inferred.
+
+**1. `mock.module` is not hoisted, but it *is* retroactive.** It updates the registry
+and ESM live bindings, so a consumer that *calls* through an imported binding does get
+the mock even when the module was imported first. What breaks is code that **reads a
+value at module-body time**. `drop.test.ts` had `const { APPLICATIONS_PATH } = paths()`
+above its `vi.mock`; hoisting meant it got the mocked path, and without hoisting it got
+the real one — which the fixtures then `rm -rf`. Put the `mock.module` call above
+anything that reads what it mocks.
+
+**2. `mock.module` is process-global.** vitest runs `pool: "forks"`, so each file gets
+its own registry and a mock cannot escape it. `bun test` runs files in one process, so
+mocking `node:fs` or `@dokploy/server/db` in one file changes every file that runs
+after it. Symptom: a suite that passes alone and fails as part of its directory.
+**`mock.restore()` does not undo `mock.module`** — only installing the original module
+again does:
+
+```ts
+const actual = { ...nodeFs };                       // snapshot BEFORE mocking
+mock.module("node:fs", () => ({ ...actual, existsSync: () => true }));
+afterAll(() => mock.module("node:fs", () => ({ ...actual, default: actual })));
+```
+
+Restore anything global you mock, and do not depend on a mock another file installed —
+`__test__/setup.bun.ts` preloads a db mock, but a narrower one from any other file
+replaces it wholesale.
+
+**3. Native builtins are the exception to rule 1.** Ordinary modules update through
+live bindings, but `node:fs` and friends do not: a consumer that imported
+`existsSync` before your `mock.module` ran keeps the real one forever. Static imports
+are hoisted, so that is the default. Import the module under test **dynamically,
+after** the mock:
+
+```ts
+mock.module("node:fs", () => ({ ...actualFs, existsSync: () => true }));
+const { writeDomainsToCompose } = await import("@dokploy/server/utils/docker/domain");
+```
+
+This one is easy to miss precisely because rule 1 holds everywhere else.
+
+**4. There is no `importOriginal` and no `vi.hoisted`.** For the first, snapshot the
+namespace into a plain object *before* mocking — reading it back afterwards recurses
+into the mock. For the second, just declare plain consts above the `mock.module` call;
+the wrapper only existed to feed a hoisted factory.
 
 **A port is not done until you have broken the source on purpose and watched the
-test fail.**
+test fail.** And check what you broke actually matters: sabotaging an uncovered
+function, or a branch whose outcome is unchanged, leaves the suite green and proves
+nothing either way.
+
+**Run the ported files individually too, not just the directory.** Because mocks are
+process-global, a directory can be green while a file in it is broken on its own -
+one compose test only passed because a *different* file in the same directory writes
+real files to disk, making its unmocked `existsSync` true by accident:
+
+```bash
+for f in $(find __test__/<dir> -name "*.test.ts"); do bun test "$f"; done
+```
 
 ---
 
