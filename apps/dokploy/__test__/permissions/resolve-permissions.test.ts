@@ -43,10 +43,6 @@ vi.mock("@dokploy/server/db", () => ({
 	},
 }));
 
-vi.mock("@dokploy/server/services/proprietary/license-key", () => ({
-	hasValidLicense: vi.fn(() => Promise.resolve(true)),
-}));
-
 const { resolvePermissions } = await import(
 	"@dokploy/server/services/permission"
 );

@@ -9,7 +9,6 @@
 
 // import { getServerAuthSession } from "@/server/auth";
 import { db } from "@dokploy/server/db";
-import { hasValidLicense } from "@dokploy/server/index";
 import type { statements } from "@dokploy/server/lib/access-control";
 import { validateRequest } from "@dokploy/server/lib/auth";
 import { checkPermission } from "@dokploy/server/services/permission";
@@ -213,6 +212,13 @@ export const adminProcedure = t.procedure.use(({ ctx, next }) => {
  * Does NOT call the license server on every request; full validation (haveValidLicenseKey)
  * is used in the UI gate and when activating/validating keys.
  */
+/**
+ * Owner/admin-only procedure.
+ *
+ * Named for the licence gate it used to carry; that check is gone, and what
+ * remains is authorization. Kept under the old name deliberately - renaming it
+ * would touch every router that uses it and conflict on each upstream merge.
+ */
 export const enterpriseProcedure = t.procedure.use(async ({ ctx, next }) => {
 	if (
 		!ctx.session ||
@@ -220,17 +226,6 @@ export const enterpriseProcedure = t.procedure.use(async ({ ctx, next }) => {
 		(ctx.user.role !== "owner" && ctx.user.role !== "admin")
 	) {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
-
-	const hasValidLicenseResult = await hasValidLicense(
-		ctx.session.activeOrganizationId,
-	);
-
-	if (!hasValidLicenseResult) {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "Valid enterprise license required",
-		});
 	}
 
 	return next({
@@ -248,7 +243,7 @@ export const enterpriseProcedure = t.procedure.use(async ({ ctx, next }) => {
  * handler runs. Works for all role types:
  * - owner / admin  → always granted (static roles, no license needed)
  * - member         → legacy boolean fields (no license needed)
- * - custom role    → enterprise license verified automatically inside resolveRole
+ * - custom role    → resolved from organizationRole inside resolveRole
  *
  * Usage:
  *   create: withPermission("project", "create")

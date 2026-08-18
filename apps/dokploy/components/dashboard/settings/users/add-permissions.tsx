@@ -199,8 +199,8 @@ export const AddUserPermissions = ({ userId, role }: Props) => {
 	const { data: projects } = api.project.allForPermissions.useQuery(undefined, {
 		enabled: isOpen,
 	});
-	const { data: haveValidLicense } =
-		api.licenseKey.haveValidLicenseKey.useQuery();
+	// Licensing is removed: every enterprise feature is available.
+	const haveValidLicense = true;
 
 	const { data: gitProviders } = api.gitProvider.allForPermissions.useQuery(
 		undefined,

@@ -15,7 +15,7 @@ import type { DeploymentJob } from "./queue-types";
  *   same container name, etc).
  *
  * The concurrency is resolved lazily per partition through `resolveConcurrency`
- * so it can be gated by the enterprise license at run time (a non-licensed
+ * so concurrency stays configurable at run time (a default
  * instance always resolves to 1).
  *
  * The public surface (`add`, `getJobs`, `close`, `on`) mirrors the subset of

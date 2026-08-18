@@ -23,8 +23,8 @@ interface Props {
 export const HandleForwardAuth = ({ domainId, applicationId }: Props) => {
 	const [isOpen, setIsOpen] = useState(false);
 
-	const { data: haveValidLicense } =
-		api.licenseKey.haveValidLicenseKey.useQuery();
+	// Licensing is removed: every enterprise feature is available.
+	const haveValidLicense = true;
 
 	const utils = api.useUtils();
 

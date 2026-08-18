@@ -6,7 +6,6 @@ import {
 	IS_CLOUD,
 	initCancelDeployments,
 	initCronJobs,
-	initEnterpriseBackupCronJobs,
 	initializeNetwork,
 	initSchedules,
 	initVolumeBackupsCronJobs,
@@ -73,7 +72,6 @@ void app.prepare().then(async () => {
 			await initVolumeBackupsCronJobs();
 			await sendDokployRestartNotifications();
 		}
-		await initEnterpriseBackupCronJobs();
 
 		if (!IS_CLOUD) {
 			console.log("Starting Deployment Worker");

@@ -21,29 +21,8 @@ import {
 
 export const ssoRouter = createTRPCRouter({
 	showSignInWithSSO: publicProcedure.query(async () => {
-		if (IS_CLOUD) {
-			return true;
-		}
-		const owner = await db.query.member.findFirst({
-			where: eq(member.role, "owner"),
-			with: {
-				user: {
-					columns: {
-						enableEnterpriseFeatures: true,
-						isValidEnterpriseLicense: true,
-					},
-				},
-			},
-			orderBy: [asc(member.createdAt)],
-		});
-
-		if (!owner) {
-			return false;
-		}
-
-		return (
-			owner.user.enableEnterpriseFeatures && owner.user.isValidEnterpriseLicense
-		);
+		// Licensing is removed: SSO is available to every installation.
+		return true;
 	}),
 	enforceSSO: publicProcedure.query(async () => {
 		if (IS_CLOUD) {
