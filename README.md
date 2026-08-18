@@ -71,7 +71,9 @@ Documentation for the product itself: [docs.dokploy.com](https://docs.dokploy.co
 
 ## What running on Bun changes
 
-Nothing about how you use it. The differences are in the build and the runtime:
+Nothing about how you use it. The differences are in the build and in the running server.
+
+**Build and packaging:**
 
 | | Node + pnpm | Bun |
 |---|---|---|
@@ -79,6 +81,29 @@ Nothing about how you use it. The differences are in the build and the runtime:
 | CI build job | 3m51s | **2m39s** |
 | api service image | 1.25GB | **234MB** |
 | web image | 3.25GB | 3.22GB |
+
+**The running server**, measured head-to-head against a build of the pre-migration
+commit — same host, same PostgreSQL, byte-identical SSR output — with medians over
+repeated runs:
+
+| | Node | Bun |
+|---|---|---|
+| Shutdown (`docker stop` to exited) | 3019ms | **318ms** |
+| Cold boot, incl. 186 migrations | 4720ms | **3411ms** |
+| Warm start | 4244ms | **3345ms** |
+| Memory, idle | 753 MiB | **626 MiB** |
+| Memory, after load | 1315 MiB | **760 MiB** |
+| `/register` SSR throughput | 780 rps | 745 rps |
+| `/api/health` throughput | 8855 rps | 8681 rps |
+
+**Throughput did not improve.** Both endpoints are inside noise, and the baseline is
+nominally ahead on each. The request path is bounded by Next.js and React rendering,
+not by the JavaScript engine, so changing the engine does not move it — and this README
+is not going to pretend otherwise.
+
+What did move is startup, shutdown and memory. Shutdown by 9.5×, which is the one that
+shows up in practice: the service runs with `--update-order stop-first`, so every
+update waits for it.
 
 The service images collapse because `bun build` produces a self-contained bundle — they
 ship no `node_modules` at all. The web image does not shrink, and that is worth saying
@@ -91,8 +116,10 @@ built-in APIs — `node-pty` → `Bun.Terminal`, `bcrypt` → `Bun.password` —
 password hashes keep working in both directions, so upgrading and rolling back are both
 safe.
 
-There are no request-latency or throughput numbers here. Nothing has been measured under
-sustained production traffic, and this README will not claim otherwise.
+These are single-host benchmarks of a freshly started server, not observations of a
+production deployment under sustained real traffic. The harness is committed as
+[`scripts/runtime-benchmark.ts`](scripts/runtime-benchmark.ts) so the numbers can be
+re-run rather than believed.
 
 **The migration is documented in full**, including what broke and how:
 [docs/bun-migration/](docs/bun-migration/PLAN.md).
