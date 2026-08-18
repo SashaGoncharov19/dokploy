@@ -289,6 +289,21 @@ Requires [Bun](https://bun.sh) 1.3.14+. Node.js and pnpm are no longer needed.
 
 ---
 
+## Versioning
+
+Versions carry a `-bun.N` suffix — `v0.30.0-bun.1` is upstream's v0.30.0 running on Bun.
+It shows in the UI, the startup log and the image tags, so which build an instance is
+running is never a guess.
+
+⚠️ It is a semver **prerelease**, which sorts *below* the plain version. Publish only
+`-bun.N` tags to this fork's registry: a bare `v0.30.0` would rank above `v0.30.0-bun.1`
+and register as an update.
+
+The update check queries **this fork's registry**, set by `DOKPLOY_IMAGE` and defaulting
+to `ghcr.io/sashagoncharov19/dokploy-bun`. Upstream's code pointed it at Docker Hub's
+`dokploy/dokploy`, which meant the Update button would have replaced this Bun build with
+upstream's Node build.
+
 ## Relationship to upstream
 
 This fork tracks [Dokploy/dokploy](https://github.com/Dokploy/dokploy) and pulls its
