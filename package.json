@@ -43,7 +43,6 @@
 	},
 	"trustedDependencies": [
 		"@scarf/scarf",
-		"@tree-sitter-grammars/tree-sitter-yaml",
 		"better-sqlite3",
 		"core-js-pure",
 		"cpu-features",
@@ -51,8 +50,6 @@
 		"msgpackr-extract",
 		"protobufjs",
 		"sharp",
-		"ssh2",
-		"tree-sitter",
-		"tree-sitter-json"
+		"ssh2"
 	]
 }

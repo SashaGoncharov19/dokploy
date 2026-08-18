@@ -1,39 +1,35 @@
 # syntax=docker/dockerfile:1
-FROM node:24.4.0-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
-RUN corepack prepare pnpm@10.22.0 --activate
+FROM oven/bun:1.3.14-slim AS base
 
 FROM base AS build
-COPY . /usr/src/app
 WORKDIR /usr/src/app
 
-RUN apt-get update && apt-get install -y python3 make g++ git python3-pip pkg-config libsecret-1-dev && rm -rf /var/lib/apt/lists/*
+# Build toolchain for the remaining native dependencies: ssh2's optional crypto
+# binding, cpu-features, and the tree-sitter parsers swagger-ui pulls in.
+# node-pty and bcrypt are gone - replaced by Bun.Terminal and Bun.password.
+#
+# Node is required here even though nothing runs on it: node-gyp is a Node
+# program, and the oven/bun image ships no node binary. It stays in the build
+# stage only and never reaches the runtime image.
+RUN apt-get update && apt-get install -y python3 make g++ curl ca-certificates \
+ && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+ && apt-get install -y nodejs \
+ && npm install -g node-gyp \
+ && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter=@dokploy/server --filter=./apps/api install --frozen-lockfile
-
-# Deploy only the dokploy app
+COPY . .
+RUN --mount=type=cache,id=bun,target=/root/.bun/install/cache bun install --frozen-lockfile
 
 ENV NODE_ENV=production
-RUN pnpm --filter=@dokploy/server build
-RUN pnpm --filter=./apps/api run build
-
-RUN pnpm --filter=./apps/api --prod deploy --legacy /prod/api
-
-RUN cp -R /usr/src/app/apps/api/dist /prod/api/dist
+RUN bun run --filter @dokploy/api build
 
 FROM base AS dokploy
 WORKDIR /app
-
-# Set production
 ENV NODE_ENV=production
 
-# Copy only the necessary files
-COPY --from=build /prod/api/dist ./dist
-COPY --from=build /prod/api/package.json ./package.json
-COPY --from=build /prod/api/node_modules ./node_modules
+# `bun build` emits a self-contained bundle plus any native addons it extracted,
+# so dist/ is the whole application - no node_modules in the runtime image.
+COPY --from=build /usr/src/app/apps/api/dist ./dist
 
 ENV HOSTNAME=0.0.0.0
-CMD ["pnpm", "start"]
+CMD ["bun", "dist/index.js"]
