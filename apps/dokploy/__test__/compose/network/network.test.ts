@@ -1,3 +1,4 @@
+import { expect, test } from "bun:test";
 import type { ComposeSpecification } from "@dokploy/server";
 import {
 	addSuffixToAllNetworks,
@@ -5,7 +6,6 @@ import {
 	addSuffixToServiceNetworks,
 	generateRandomHash,
 } from "@dokploy/server";
-import { expect, test } from "vitest";
 import { parse } from "yaml";
 
 const composeFileCombined = `

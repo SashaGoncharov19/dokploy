@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import type { Domain } from "@dokploy/server";
 import { createDomainLabels } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 
 /**

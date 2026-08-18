@@ -1,11 +1,11 @@
+import { describe, expect, it, jest, mock } from "bun:test";
 import { getBuildComposeCommand } from "@dokploy/server/utils/builders/compose";
-import { describe, expect, it, vi } from "vitest";
 
 // Compose now has a `createEnvFile` toggle (default true), mirroring the
 // Application builder's flag: when disabled, Dokploy never writes `.env`,
 // so a repo-tracked file survives untouched.
-vi.mock("@dokploy/server/utils/docker/domain", () => ({
-	writeDomainsToCompose: vi.fn().mockResolvedValue(""),
+mock.module("@dokploy/server/utils/docker/domain", () => ({
+	writeDomainsToCompose: jest.fn().mockResolvedValue(""),
 }));
 
 const baseCompose = {

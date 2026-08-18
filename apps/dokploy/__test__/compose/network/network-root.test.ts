@@ -1,6 +1,6 @@
+import { expect, test } from "bun:test";
 import type { ComposeSpecification } from "@dokploy/server";
 import { addSuffixToNetworksRoot, generateRandomHash } from "@dokploy/server";
-import { expect, test } from "vitest";
 import { parse } from "yaml";
 
 const composeFile = `
@@ -273,10 +273,13 @@ test("Add suffix to networks with static suffix", () => {
 	}
 	const networks = addSuffixToNetworksRoot(composeData.networks, suffix);
 
-	const expectedComposeData = parse(
+	const { networks: expectedNetworks } = parse(
 		expectedComposeFile6,
 	) as ComposeSpecification;
-	expect(networks).toStrictEqual(expectedComposeData.networks);
+	if (!expectedNetworks) {
+		throw new Error("fixture expectedComposeFile6 has no networks");
+	}
+	expect(networks).toStrictEqual(expectedNetworks);
 });
 
 const composeFile7 = `

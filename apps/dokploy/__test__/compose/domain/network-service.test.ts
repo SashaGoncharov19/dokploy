@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { addDokployNetworkToService } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
 
 describe("addDokployNetworkToService", () => {
 	it("should add network to an empty array", () => {

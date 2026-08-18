@@ -1,6 +1,6 @@
+import { expect, test } from "bun:test";
 import type { ComposeSpecification } from "@dokploy/server";
 import { addSuffixToConfigsRoot, generateRandomHash } from "@dokploy/server";
-import { expect, test } from "vitest";
 import { parse } from "yaml";
 
 test("Generate random hash with 8 characters", () => {
@@ -170,7 +170,7 @@ test("Add suffix to configs in root property", () => {
 		return;
 	}
 	const configs = addSuffixToConfigsRoot(composeData.configs, suffix);
-	const updatedComposeData = { ...composeData, configs };
+	const updatedComposeData: ComposeSpecification = { ...composeData, configs };
 
 	// Verificar que el resultado coincide con el archivo esperado
 	expect(updatedComposeData).toEqual(expectedComposeFileConfigRoot);

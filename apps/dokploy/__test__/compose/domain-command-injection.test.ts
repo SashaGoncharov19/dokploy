@@ -1,16 +1,27 @@
+import { afterAll, describe, expect, it, mock } from "bun:test";
+import * as nodeFs from "node:fs";
 import { parse } from "shell-quote";
-import { describe, expect, it, vi } from "vitest";
+
+// Snapshot before mocking: `mock.module` has no `importOriginal`, and reading
+// back through the namespace afterwards would recurse into the mock.
+const actualFs = { ...nodeFs };
 
 // writeDomainsToCompose reads the on-disk compose file; mock fs so the file
 // "exists" but does not contain the attacker's service, forcing the error path
 // whose message embeds the user-controlled serviceName.
-vi.mock("node:fs", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("node:fs")>();
-	return {
-		...actual,
-		existsSync: () => true,
-		readFileSync: () => "services:\n  web:\n    image: nginx\n",
-	};
+mock.module("node:fs", () => ({
+	...actualFs,
+	default: actualFs,
+	existsSync: () => true,
+	readFileSync: () => "services:\n  web:\n    image: nginx\n",
+}));
+
+// `mock.module` is process-global and `mock.restore()` does not undo it, so
+// without this the fake `existsSync` leaks into every later file in the same
+// `bun test` run. vitest never needed it - `pool: "forks"` gives each file its
+// own module registry. Re-installing the snapshot is what actually reverts it.
+afterAll(() => {
+	mock.module("node:fs", () => ({ ...actualFs, default: actualFs }));
 });
 
 import { writeDomainsToCompose } from "@dokploy/server/utils/docker/domain";

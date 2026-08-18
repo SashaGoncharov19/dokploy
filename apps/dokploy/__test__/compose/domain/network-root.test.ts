@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { addDokployNetworkToRoot } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
 
 describe("addDokployNetworkToRoot", () => {
 	it("should create network object if networks is undefined", () => {

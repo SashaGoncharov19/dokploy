@@ -1,7 +1,7 @@
+import { beforeEach, describe, expect, it, jest } from "bun:test";
 import type { Compose } from "@dokploy/server/services/compose";
 import type { Domain } from "@dokploy/server/services/domain";
 import { addDomainToCompose } from "@dokploy/server/utils/docker/domain";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // With sourceType "raw", addDomainToCompose parses compose.composeFile
 // directly instead of reading from disk, so baseCompose exposes it as a
@@ -56,7 +56,7 @@ const serviceLabels = (
 
 describe("addDomainToCompose enabled filtering", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		jest.clearAllMocks();
 		composeYaml = baseComposeYaml;
 	});
 

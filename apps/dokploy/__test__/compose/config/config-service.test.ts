@@ -1,9 +1,9 @@
+import { expect, test } from "bun:test";
 import type { ComposeSpecification } from "@dokploy/server";
 import {
 	addSuffixToConfigsInServices,
 	generateRandomHash,
 } from "@dokploy/server";
-import { expect, test } from "vitest";
 import { parse } from "yaml";
 
 const composeFile = `
@@ -193,7 +193,10 @@ test("Add suffix to configs in services", () => {
 		composeData.services,
 		suffix,
 	);
-	const actualComposeData = { ...composeData, services: updatedComposeData };
+	const actualComposeData: ComposeSpecification = {
+		...composeData,
+		services: updatedComposeData,
+	};
 
 	expect(actualComposeData).toEqual(expectedComposeFileConfigServices);
 });

@@ -27,6 +27,7 @@ export default defineConfig({
 			"**/__test__/permissions/**",
 			"**/__test__/wss/**",
 			"**/__test__/dns/**",
+			"**/__test__/compose/**",
 		],
 		pool: "forks",
 		setupFiles: [path.resolve(__dirname, "setup.ts")],

@@ -1,14 +1,29 @@
+import { afterAll, beforeEach, expect, jest, mock, test } from "bun:test";
 import type { Compose, ComposeSpecification } from "@dokploy/server";
 import {
 	applyServiceNetworks,
 	declareUsedNetworksInRoot,
 	resolveServiceNetworks,
 } from "@dokploy/server";
-import { db } from "@dokploy/server/db";
-import { beforeEach, expect, test, type vi } from "vitest";
 import { parse } from "yaml";
+import { createDbMock } from "../../db-mock";
 
-const findManyMock = db.query.network.findMany as ReturnType<typeof vi.fn>;
+// This used to reach into the preload's shared db mock. `mock.module` is
+// process-global, so any other file in the same `bun test` run that mocks
+// `@dokploy/server/db` with a narrower shape - queues and permissions both do -
+// replaced it and left `db.query.network` undefined. Owning the mock here makes
+// the file independent of which other files ran first.
+const findManyMock = jest.fn();
+
+mock.module("@dokploy/server/db", () => ({
+	db: { query: { network: { findMany: findManyMock } } },
+}));
+
+// Same reasoning in reverse: this narrow shape would leak to every later file.
+// Put the preload's shape back on the way out.
+afterAll(() => {
+	mock.module("@dokploy/server/db", () => createDbMock(jest.fn));
+});
 
 beforeEach(() => {
 	findManyMock.mockReset();
