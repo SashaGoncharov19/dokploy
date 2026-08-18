@@ -28,6 +28,19 @@ ENV NODE_ENV=production
 RUN bun run --filter dokploy build \
     && rm -rf apps/dokploy/.next/cache apps/dokploy/.next/trace
 
+# node_modules is 71% of this image, and a good slice of it cannot run here.
+# Pruned after the build, so nothing above is affected:
+#   - devDependencies (biome ~114MB, typescript, simple-icons, vitest, drizzle-kit)
+#   - musl builds of swc and biome: this image is Debian/glibc, so they are dead
+#     weight that will never be loaded
+#   - the prisma/effect chain, pulled in as optionalDependencies of
+#     @better-auth/prisma-adapter. This fork uses drizzle; prisma is imported
+#     nowhere.
+RUN bun install --production \
+    && find node_modules/.bun -maxdepth 1 \( \
+         -name '*musl*' -o -name 'prisma@*' -o -name '@prisma*' \
+         -o -name 'effect@*' \) -exec rm -rf {} + 2>/dev/null || true
+
 FROM base AS dokploy
 # The workspace layout is preserved because node_modules uses relative symlinks
 # into ../../node_modules/.bun/*; flattening the app into /app would break every
