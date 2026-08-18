@@ -11,7 +11,7 @@ DOKPLOY_REPO="${DOKPLOY_REPO:-SashaGoncharov19/dokploy-bun}"
 DOKPLOY_IMAGE="${DOKPLOY_IMAGE:-ghcr.io/sashagoncharov19/dokploy-bun}"
 # Used when no GitHub release can be detected. canary is what publish-images.yml
 # pushes today; this becomes "latest" once the fork cuts its first release.
-DOKPLOY_FALLBACK_VERSION="${DOKPLOY_FALLBACK_VERSION:-canary}"
+DOKPLOY_FALLBACK_VERSION="${DOKPLOY_FALLBACK_VERSION:-latest}"
 DOKPLOY_INSTALL_URL="${DOKPLOY_INSTALL_URL:-https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh}"
 
 # Detect version from environment variable or default to latest
@@ -43,10 +43,10 @@ detect_version() {
             *) version="" ;;
         esac
 
-        # Fallback if detection fails. Upstream falls back to "latest", which is
-        # published from its main branch. This fork publishes from canary and has
-        # no tagged releases yet, so "latest" does not exist and the install dies
-        # with "No such image". Fall back to the tag that is actually there.
+        # Fallback if detection fails (unreachable network, rate limit). This
+        # fork now publishes "latest" from main alongside a version tag, so the
+        # fallback is the stable channel rather than canary - a transient
+        # network failure should not quietly put someone on the moving tag.
         if [ -z "$version" ]; then
             echo "Warning: no release detected in ${DOKPLOY_REPO}, falling back to ${DOKPLOY_FALLBACK_VERSION}" >&2
             version="${DOKPLOY_FALLBACK_VERSION}"
