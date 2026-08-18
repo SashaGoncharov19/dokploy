@@ -1,5 +1,10 @@
 name: Hotfix Release
 
+# Upstream-only: upstream's hotfix process, needs HOTFIX_PUSH_TOKEN.
+# The required secrets exist in Dokploy/dokploy and not in this fork, so every job
+# is gated on the repository rather than the file being deleted - deleting it would
+# conflict on every upstream merge. See docs/FORK-STRATEGY.md.
+
 on:
   workflow_dispatch:
 
@@ -9,6 +14,7 @@ concurrency:
 
 jobs:
   release:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main

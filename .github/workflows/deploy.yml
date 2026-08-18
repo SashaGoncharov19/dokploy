@@ -1,5 +1,10 @@
 name: Build Docker images
 
+# Upstream-only: pushes dokploy/server and dokploy/schedule to Docker Hub, which publish-images.yml does for this fork.
+# The required secrets exist in Dokploy/dokploy and not in this fork, so every job
+# is gated on the repository rather than the file being deleted - deleting it would
+# conflict on every upstream merge. See docs/FORK-STRATEGY.md.
+
 on:
   push:
     branches: [main, canary]
@@ -7,6 +12,7 @@ on:
 
 jobs:
   build-and-push-cloud-image:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-latest
 
     steps:
@@ -44,6 +50,7 @@ jobs:
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
 
   build-and-push-schedule-image:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-latest
 
     steps:
@@ -76,6 +83,7 @@ jobs:
           platforms: linux/amd64
 
   build-and-push-server-image:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-latest
 
     steps:
