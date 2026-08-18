@@ -203,11 +203,15 @@ On a fresh VPS, as root:
 curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
 ```
 
-The script is upstream's, changed in exactly two ways: images come from this
-repository's GitHub Container Registry (`ghcr.io/sashagoncharov19/dokploy-bun`)
-rather than Docker Hub, and version detection follows **this** repository's
-releases. Both are overridable — `DOKPLOY_IMAGE` and `DOKPLOY_REPO` — if you build
-your own.
+The script is upstream's, changed in three ways: images come from this repository's
+GitHub Container Registry (`ghcr.io/sashagoncharov19/dokploy-bun`) rather than Docker
+Hub, version detection follows **this** repository's releases, and when there is no
+release to detect it falls back to `canary` rather than `latest`. All three are
+overridable — `DOKPLOY_IMAGE`, `DOKPLOY_REPO`, `DOKPLOY_FALLBACK_VERSION`.
+
+There are no tagged releases yet, so installs land on `canary`, which is what
+`publish-images.yml` publishes. Pin explicitly with `DOKPLOY_VERSION=canary` if you
+prefer to be sure.
 
 To update an existing install:
 

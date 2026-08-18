@@ -9,6 +9,9 @@ DOCKER_VERSION="28.5.0"
 # with DOKPLOY_IMAGE / DOKPLOY_REPO if you host your own build.
 DOKPLOY_REPO="${DOKPLOY_REPO:-SashaGoncharov19/dokploy-bun}"
 DOKPLOY_IMAGE="${DOKPLOY_IMAGE:-ghcr.io/sashagoncharov19/dokploy-bun}"
+# Used when no GitHub release can be detected. canary is what publish-images.yml
+# pushes today; this becomes "latest" once the fork cuts its first release.
+DOKPLOY_FALLBACK_VERSION="${DOKPLOY_FALLBACK_VERSION:-canary}"
 
 # Detect version from environment variable or default to latest
 # Usage with curl (export first): export DOKPLOY_VERSION=canary && curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
@@ -39,10 +42,13 @@ detect_version() {
             *) version="" ;;
         esac
 
-        # Fallback to latest tag if detection fails
+        # Fallback if detection fails. Upstream falls back to "latest", which is
+        # published from its main branch. This fork publishes from canary and has
+        # no tagged releases yet, so "latest" does not exist and the install dies
+        # with "No such image". Fall back to the tag that is actually there.
         if [ -z "$version" ]; then
-            echo "Warning: Could not detect latest version from GitHub, using fallback version latest" >&2
-            version="latest"
+            echo "Warning: no release detected in ${DOKPLOY_REPO}, falling back to ${DOKPLOY_FALLBACK_VERSION}" >&2
+            version="${DOKPLOY_FALLBACK_VERSION}"
         else
             echo "Latest stable version detected: $version" >&2
         fi
