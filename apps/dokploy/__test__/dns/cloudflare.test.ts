@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 
-const mockFetch = vi.fn();
+const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
 import { cloudflareClient } from "@dokploy/server/utils/dns/cloudflare";

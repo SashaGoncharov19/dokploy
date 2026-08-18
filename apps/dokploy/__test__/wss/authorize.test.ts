@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 
 // Mock the permission + server helpers the wss authorizer composes.
-const mockHasPermission = vi.hoisted(() => vi.fn());
-const mockFindMember = vi.hoisted(() => vi.fn());
-const mockCheckServiceAccess = vi.hoisted(() => vi.fn());
-vi.mock("@dokploy/server/services/permission", () => ({
+const mockHasPermission = jest.fn();
+const mockFindMember = jest.fn();
+const mockCheckServiceAccess = jest.fn();
+mock.module("@dokploy/server/services/permission", () => ({
 	hasPermission: mockHasPermission,
 	findMemberByUserId: mockFindMember,
 	checkServiceAccess: mockCheckServiceAccess,
 }));
 
-const mockGetAccessibleServerIds = vi.hoisted(() => vi.fn());
-vi.mock("@dokploy/server", () => ({
+const mockGetAccessibleServerIds = jest.fn();
+mock.module("@dokploy/server", () => ({
 	getAccessibleServerIds: mockGetAccessibleServerIds,
 }));
 
@@ -24,7 +24,7 @@ const USER = { id: "user-1" };
 const SESSION = { activeOrganizationId: "org-1" };
 
 beforeEach(() => {
-	vi.clearAllMocks();
+	jest.clearAllMocks();
 });
 
 describe("canAccessDockerOverWss", () => {

@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest, mock } from "bun:test";
 
-vi.mock("@dokploy/server/db", () => ({
+mock.module("@dokploy/server/db", () => ({
 	db: {
-		query: { dnsProvider: { findFirst: vi.fn(), findMany: vi.fn() } },
-		insert: vi.fn(),
-		update: vi.fn(),
-		delete: vi.fn(),
+		query: { dnsProvider: { findFirst: jest.fn(), findMany: jest.fn() } },
+		insert: jest.fn(),
+		update: jest.fn(),
+		delete: jest.fn(),
 	},
 }));
 

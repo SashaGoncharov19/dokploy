@@ -1,36 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 
 type HasInput = { input: any };
 
-const {
-	send,
-	Route53Client,
-	ListHostedZonesCommand,
-	ListResourceRecordSetsCommand,
-	ChangeResourceRecordSetsCommand,
-} = vi.hoisted(() => {
-	class FakeCommand {
-		input: any;
-		constructor(input: any) {
-			this.input = input;
-		}
+// `vi.hoisted` wrapped these so the hoisted `vi.mock` factory below could see
+// them. `mock.module` runs in source order, so top-level declarations do.
+class FakeCommand {
+	input: any;
+	constructor(input: any) {
+		this.input = input;
 	}
-	const send = vi.fn();
-	class Route53Client {
-		send(command: unknown) {
-			return send(command);
-		}
+}
+const send = jest.fn();
+class Route53Client {
+	send(command: unknown) {
+		return send(command);
 	}
-	return {
-		send,
-		Route53Client,
-		ListHostedZonesCommand: class extends FakeCommand {},
-		ListResourceRecordSetsCommand: class extends FakeCommand {},
-		ChangeResourceRecordSetsCommand: class extends FakeCommand {},
-	};
-});
+}
+class ListHostedZonesCommand extends FakeCommand {}
+class ListResourceRecordSetsCommand extends FakeCommand {}
+class ChangeResourceRecordSetsCommand extends FakeCommand {}
 
-vi.mock("@aws-sdk/client-route-53", () => ({
+mock.module("@aws-sdk/client-route-53", () => ({
 	Route53Client,
 	ListHostedZonesCommand,
 	ListResourceRecordSetsCommand,
