@@ -3,9 +3,25 @@ import { validateRequest } from "@dokploy/server/lib/auth";
 import { hasPermission } from "@dokploy/server/services/permission";
 import { Loader2 } from "lucide-react";
 import type { GetServerSidePropsContext } from "next";
+import dynamic from "next/dynamic";
 import type { ReactElement } from "react";
-import { ContainerFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-container-monitoring";
-import { ShowPaidMonitoring } from "@/components/dashboard/monitoring/paid/servers/show-paid-monitoring";
+
+const ContainerFreeMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/free/container/show-free-container-monitoring"
+		).then((m) => m.ContainerFreeMonitoring),
+	{ ssr: false },
+);
+
+const ShowPaidMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/paid/servers/show-paid-monitoring"
+		).then((m) => m.ShowPaidMonitoring),
+	{ ssr: false },
+);
+
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { useLocalStorage } from "@/hooks/useLocalStorage";

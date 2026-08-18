@@ -6,6 +6,7 @@ import type {
 	GetServerSidePropsContext,
 	InferGetServerSidePropsType,
 } from "next";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -33,8 +34,22 @@ import { ShowSchedules } from "@/components/dashboard/application/schedules/show
 import { UpdateApplication } from "@/components/dashboard/application/update-application";
 import { ShowVolumeBackups } from "@/components/dashboard/application/volume-backups/show-volume-backups";
 import { DeleteService } from "@/components/dashboard/compose/delete-service";
-import { ContainerFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-container-monitoring";
-import { ContainerPaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring";
+
+const ContainerFreeMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/free/container/show-free-container-monitoring"
+		).then((m) => m.ContainerFreeMonitoring),
+	{ ssr: false },
+);
+const ContainerPaidMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring"
+		).then((m) => m.ContainerPaidMonitoring),
+	{ ssr: false },
+);
+
 import { AssignNetworks } from "@/components/dashboard/networks/assign-networks";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
