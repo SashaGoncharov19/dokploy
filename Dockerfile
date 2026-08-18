@@ -36,10 +36,20 @@ RUN bun run --filter dokploy build \
 #   - the prisma/effect chain, pulled in as optionalDependencies of
 #     @better-auth/prisma-adapter. This fork uses drizzle; prisma is imported
 #     nowhere.
+# `bun install --production` on its own removes almost nothing here - it does not
+# prune an existing node_modules - so the dead weight is named explicitly.
 RUN bun install --production \
     && find node_modules/.bun -maxdepth 1 \( \
-         -name '*musl*' -o -name 'prisma@*' -o -name '@prisma*' \
-         -o -name 'effect@*' \) -exec rm -rf {} + 2>/dev/null || true
+         `# musl builds: this image is Debian/glibc, they can never load` \
+         -name '*musl*' \
+         `# prisma chain, an optionalDependency of @better-auth/prisma-adapter;` \
+         `# this fork uses drizzle and imports prisma nowhere` \
+         -o -name 'prisma@*' -o -name '@prisma*' -o -name 'effect@*' \
+         `# build-time only: linter, compiler, and the icon set that exists` \
+         `# purely to generate lib/bundled-icons.ts` \
+         -o -name '@biomejs*' -o -name 'typescript@*' -o -name '@typescript*' \
+         -o -name 'simple-icons@*' -o -name 'vitest@*' -o -name 'drizzle-kit@*' \
+         \) -exec rm -rf {} + 2>/dev/null || true
 
 FROM base AS dokploy
 # The workspace layout is preserved because node_modules uses relative symlinks
