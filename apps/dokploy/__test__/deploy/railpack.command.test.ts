@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import type { ApplicationNested } from "@dokploy/server/utils/builders";
 import { getRailpackCommand } from "@dokploy/server/utils/builders/railpack";
-import { describe, expect, it } from "vitest";
 
 const createApplication = (
 	overrides: Partial<ApplicationNested> = {},

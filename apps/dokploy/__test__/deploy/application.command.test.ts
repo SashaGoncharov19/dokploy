@@ -1,21 +1,64 @@
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from "bun:test";
 import * as adminService from "@dokploy/server/services/admin";
 import * as applicationService from "@dokploy/server/services/application";
 import { deployApplication } from "@dokploy/server/services/application";
 import * as deploymentService from "@dokploy/server/services/deployment";
+import * as rollbacksService from "@dokploy/server/services/rollbacks";
 import * as builders from "@dokploy/server/utils/builders";
+import * as buildError from "@dokploy/server/utils/notifications/build-error";
 import * as notifications from "@dokploy/server/utils/notifications/build-success";
 import * as execProcess from "@dokploy/server/utils/process/execAsync";
 import * as gitProvider from "@dokploy/server/utils/providers/git";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDbMock } from "../db-mock";
 
-vi.mock("@dokploy/server/db", () => {
+// Snapshot every module before mocking. `mock.module` has no `importActual`,
+// and reading back through a namespace after mocking recurses into the mock.
+// The restores at the bottom matter because `mock.module` is process-global.
+const actual = {
+	adminService: { ...adminService },
+	applicationService: { ...applicationService },
+	deploymentService: { ...deploymentService },
+	rollbacksService: { ...rollbacksService },
+	builders: { ...builders },
+	buildError: { ...buildError },
+	notifications: { ...notifications },
+	execProcess: { ...execProcess },
+	gitProvider: { ...gitProvider },
+};
+
+// Named handles instead of `vi.mocked(...)`, which bun:test has no equivalent
+// for. Referencing these directly is also better typed than casting.
+const findApplicationByIdMock = jest.fn();
+const updateApplicationStatusMock = jest.fn();
+const getDokployUrlMock = jest.fn();
+const createDeploymentMock = jest.fn();
+const updateDeploymentStatusMock = jest.fn();
+const updateDeploymentMock = jest.fn();
+const getGitCommitInfoMock = jest.fn();
+const execAsyncMock = jest.fn();
+const mechanizeDockerContainerMock = jest.fn();
+const getBuildCommandMock = jest.fn();
+const sendBuildSuccessNotificationsMock = jest.fn();
+const sendBuildErrorNotificationsMock = jest.fn();
+const createRollbackMock = jest.fn();
+const applicationsFindFirstMock = jest.fn();
+
+mock.module("@dokploy/server/db", () => {
 	const createChainableMock = (): any => {
 		const chain = {
-			set: vi.fn(() => chain),
-			where: vi.fn(() => chain),
-			returning: vi.fn().mockResolvedValue([{}] as any),
-			from: vi.fn(() => chain),
-			innerJoin: vi.fn(() => chain),
+			set: jest.fn(() => chain),
+			where: jest.fn(() => chain),
+			returning: jest.fn().mockResolvedValue([{}] as any),
+			from: jest.fn(() => chain),
+			innerJoin: jest.fn(() => chain),
 			then: (resolve: (v: any) => void) => {
 				resolve([]);
 			},
@@ -25,82 +68,73 @@ vi.mock("@dokploy/server/db", () => {
 
 	return {
 		db: {
-			select: vi.fn(() => createChainableMock()),
-			insert: vi.fn(),
-			update: vi.fn(() => createChainableMock()),
-			delete: vi.fn(),
+			select: jest.fn(() => createChainableMock()),
+			insert: jest.fn(),
+			update: jest.fn(() => createChainableMock()),
+			delete: jest.fn(),
 			query: {
 				applications: {
-					findFirst: vi.fn(),
+					findFirst: applicationsFindFirstMock,
 				},
 				patch: {
-					findMany: vi.fn().mockResolvedValue([]),
+					findMany: jest.fn().mockResolvedValue([]),
 				},
 				member: {
-					findMany: vi.fn().mockResolvedValue([]),
+					findMany: jest.fn().mockResolvedValue([]),
 				},
 			},
 		},
 	};
 });
 
-vi.mock("@dokploy/server/services/application", async () => {
-	const actual = await vi.importActual<
-		typeof import("@dokploy/server/services/application")
-	>("@dokploy/server/services/application");
-	return {
-		...actual,
-		findApplicationById: vi.fn(),
-		updateApplicationStatus: vi.fn(),
-	};
-});
-
-vi.mock("@dokploy/server/services/admin", () => ({
-	getDokployUrl: vi.fn(),
+mock.module("@dokploy/server/services/application", () => ({
+	...actual.applicationService,
+	findApplicationById: findApplicationByIdMock,
+	updateApplicationStatus: updateApplicationStatusMock,
 }));
 
-vi.mock("@dokploy/server/services/deployment", () => ({
-	createDeployment: vi.fn(),
-	updateDeploymentStatus: vi.fn(),
-	updateDeployment: vi.fn(),
+mock.module("@dokploy/server/services/admin", () => ({
+	...actual.adminService,
+	getDokployUrl: getDokployUrlMock,
 }));
 
-vi.mock("@dokploy/server/utils/providers/git", async () => {
-	const actual = await vi.importActual<
-		typeof import("@dokploy/server/utils/providers/git")
-	>("@dokploy/server/utils/providers/git");
-	return {
-		...actual,
-		getGitCommitInfo: vi.fn(),
-	};
-});
+mock.module("@dokploy/server/services/deployment", () => ({
+	...actual.deploymentService,
+	createDeployment: createDeploymentMock,
+	updateDeploymentStatus: updateDeploymentStatusMock,
+	updateDeployment: updateDeploymentMock,
+}));
 
-vi.mock("@dokploy/server/utils/process/execAsync", () => ({
-	execAsync: vi.fn(),
+mock.module("@dokploy/server/utils/providers/git", () => ({
+	...actual.gitProvider,
+	getGitCommitInfo: getGitCommitInfoMock,
+}));
+
+mock.module("@dokploy/server/utils/process/execAsync", () => ({
+	...actual.execProcess,
+	execAsync: execAsyncMock,
 	ExecError: class ExecError extends Error {},
 }));
 
-vi.mock("@dokploy/server/utils/builders", async () => {
-	const actual = await vi.importActual<
-		typeof import("@dokploy/server/utils/builders")
-	>("@dokploy/server/utils/builders");
-	return {
-		...actual,
-		mechanizeDockerContainer: vi.fn(),
-		getBuildCommand: vi.fn(),
-	};
-});
-
-vi.mock("@dokploy/server/utils/notifications/build-success", () => ({
-	sendBuildSuccessNotifications: vi.fn(),
+mock.module("@dokploy/server/utils/builders", () => ({
+	...actual.builders,
+	mechanizeDockerContainer: mechanizeDockerContainerMock,
+	getBuildCommand: getBuildCommandMock,
 }));
 
-vi.mock("@dokploy/server/utils/notifications/build-error", () => ({
-	sendBuildErrorNotifications: vi.fn(),
+mock.module("@dokploy/server/utils/notifications/build-success", () => ({
+	...actual.notifications,
+	sendBuildSuccessNotifications: sendBuildSuccessNotificationsMock,
 }));
 
-vi.mock("@dokploy/server/services/rollbacks", () => ({
-	createRollback: vi.fn(),
+mock.module("@dokploy/server/utils/notifications/build-error", () => ({
+	...actual.buildError,
+	sendBuildErrorNotifications: sendBuildErrorNotificationsMock,
+}));
+
+mock.module("@dokploy/server/services/rollbacks", () => ({
+	...actual.rollbacksService,
+	createRollback: createRollbackMock,
 }));
 
 import { db } from "@dokploy/server/db";
@@ -142,40 +176,24 @@ const createMockDeployment = () => ({
 
 describe("deployApplication - Command Generation Tests", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
-		vi.mocked(db.query.applications.findFirst).mockResolvedValue(
-			createMockApplication() as any,
-		);
-		vi.mocked(applicationService.findApplicationById).mockResolvedValue(
-			createMockApplication() as any,
-		);
-		vi.mocked(adminService.getDokployUrl).mockResolvedValue(
-			"http://localhost:3000",
-		);
-		vi.mocked(deploymentService.createDeployment).mockResolvedValue(
-			createMockDeployment() as any,
-		);
-		vi.mocked(execProcess.execAsync).mockResolvedValue({
+		jest.clearAllMocks();
+		applicationsFindFirstMock.mockResolvedValue(createMockApplication() as any);
+		findApplicationByIdMock.mockResolvedValue(createMockApplication() as any);
+		getDokployUrlMock.mockResolvedValue("http://localhost:3000");
+		createDeploymentMock.mockResolvedValue(createMockDeployment() as any);
+		execAsyncMock.mockResolvedValue({
 			stdout: "",
 			stderr: "",
 		} as any);
-		vi.mocked(builders.mechanizeDockerContainer).mockResolvedValue(
-			undefined as any,
-		);
-		vi.mocked(deploymentService.updateDeploymentStatus).mockResolvedValue(
-			undefined as any,
-		);
-		vi.mocked(applicationService.updateApplicationStatus).mockResolvedValue(
-			{} as any,
-		);
-		vi.mocked(notifications.sendBuildSuccessNotifications).mockResolvedValue(
-			undefined as any,
-		);
-		vi.mocked(gitProvider.getGitCommitInfo).mockResolvedValue({
+		mechanizeDockerContainerMock.mockResolvedValue(undefined as any);
+		updateDeploymentStatusMock.mockResolvedValue(undefined as any);
+		updateApplicationStatusMock.mockResolvedValue({} as any);
+		sendBuildSuccessNotificationsMock.mockResolvedValue(undefined as any);
+		getGitCommitInfoMock.mockResolvedValue({
 			message: "test commit",
 			hash: "abc123",
 		});
-		vi.mocked(deploymentService.updateDeployment).mockResolvedValue({} as any);
+		updateDeploymentMock.mockResolvedValue({} as any);
 	});
 
 	it("should generate correct git clone command for astro example", async () => {
@@ -200,7 +218,7 @@ describe("deployApplication - Command Generation Tests", () => {
 
 	it("should verify nixpacks command is called with correct app", async () => {
 		const mockNixpacksCommand = "nixpacks build /path/to/app --name test-app";
-		vi.mocked(builders.getBuildCommand).mockResolvedValue(mockNixpacksCommand);
+		getBuildCommandMock.mockResolvedValue(mockNixpacksCommand);
 
 		await deployApplication({
 			applicationId: "test-app-id",
@@ -223,15 +241,11 @@ describe("deployApplication - Command Generation Tests", () => {
 
 	it("should verify railpack command includes correct parameters", async () => {
 		const mockApp = createMockApplication({ buildType: "railpack" });
-		vi.mocked(db.query.applications.findFirst).mockResolvedValue(
-			mockApp as any,
-		);
-		vi.mocked(applicationService.findApplicationById).mockResolvedValue(
-			mockApp as any,
-		);
+		applicationsFindFirstMock.mockResolvedValue(mockApp as any);
+		findApplicationByIdMock.mockResolvedValue(mockApp as any);
 
 		const mockRailpackCommand = "railpack prepare /path/to/app";
-		vi.mocked(builders.getBuildCommand).mockResolvedValue(mockRailpackCommand);
+		getBuildCommandMock.mockResolvedValue(mockRailpackCommand);
 
 		await deployApplication({
 			applicationId: "test-app-id",
@@ -252,7 +266,7 @@ describe("deployApplication - Command Generation Tests", () => {
 
 	it("should execute commands in correct order", async () => {
 		const mockNixpacksCommand = "nixpacks build";
-		vi.mocked(builders.getBuildCommand).mockResolvedValue(mockNixpacksCommand);
+		getBuildCommandMock.mockResolvedValue(mockNixpacksCommand);
 
 		await deployApplication({
 			applicationId: "test-app-id",
@@ -260,7 +274,7 @@ describe("deployApplication - Command Generation Tests", () => {
 			descriptionLog: "",
 		});
 
-		const execCalls = vi.mocked(execProcess.execAsync).mock.calls;
+		const execCalls = execAsyncMock.mock.calls;
 		expect(execCalls.length).toBeGreaterThan(0);
 
 		const fullCommand = execCalls[0]?.[0];
@@ -271,7 +285,7 @@ describe("deployApplication - Command Generation Tests", () => {
 
 	it("should include log redirection in command", async () => {
 		const mockCommand = "nixpacks build";
-		vi.mocked(builders.getBuildCommand).mockResolvedValue(mockCommand);
+		getBuildCommandMock.mockResolvedValue(mockCommand);
 
 		await deployApplication({
 			applicationId: "test-app-id",
@@ -279,9 +293,40 @@ describe("deployApplication - Command Generation Tests", () => {
 			descriptionLog: "",
 		});
 
-		const execCalls = vi.mocked(execProcess.execAsync).mock.calls;
+		const execCalls = execAsyncMock.mock.calls;
 		const fullCommand = execCalls[0]?.[0];
 
 		expect(fullCommand).toContain(">> /tmp/test-deployment.log 2>&1");
 	});
+});
+
+afterAll(() => {
+	mock.module("@dokploy/server/db", () => createDbMock(jest.fn));
+	mock.module("@dokploy/server/services/admin", () => actual.adminService);
+	mock.module(
+		"@dokploy/server/services/application",
+		() => actual.applicationService,
+	);
+	mock.module(
+		"@dokploy/server/services/deployment",
+		() => actual.deploymentService,
+	);
+	mock.module(
+		"@dokploy/server/services/rollbacks",
+		() => actual.rollbacksService,
+	);
+	mock.module("@dokploy/server/utils/builders", () => actual.builders);
+	mock.module(
+		"@dokploy/server/utils/notifications/build-error",
+		() => actual.buildError,
+	);
+	mock.module(
+		"@dokploy/server/utils/notifications/build-success",
+		() => actual.notifications,
+	);
+	mock.module(
+		"@dokploy/server/utils/process/execAsync",
+		() => actual.execProcess,
+	);
+	mock.module("@dokploy/server/utils/providers/git", () => actual.gitProvider);
 });

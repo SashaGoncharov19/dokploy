@@ -1,9 +1,9 @@
+import { afterEach, describe, expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { createEnvFileCommand } from "@dokploy/server/utils/builders/utils";
 import { parse } from "dotenv";
-import { afterEach, describe, expect, it } from "vitest";
 
 // Unlike compose's .env, this one is read by the app's own build tooling
 // (generic dotenv, e.g. Next.js/Vite) — must stay unquoted, not Compose-escaped.

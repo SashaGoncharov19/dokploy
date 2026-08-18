@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { shouldDeploy } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
 
 describe("shouldDeploy", () => {
 	it("should deploy when no watch paths are configured", () => {

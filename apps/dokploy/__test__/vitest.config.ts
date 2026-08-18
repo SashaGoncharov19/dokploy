@@ -29,6 +29,7 @@ export default defineConfig({
 			"**/__test__/dns/**",
 			"**/__test__/compose/**",
 			"**/__test__/git-provider/**",
+			"**/__test__/deploy/**",
 		],
 		pool: "forks",
 		setupFiles: [path.resolve(__dirname, "setup.ts")],
