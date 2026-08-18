@@ -21,7 +21,6 @@ import {
 	Globe,
 	HardDrive,
 	House,
-	Key,
 	KeyRound,
 	LayoutGrid,
 	Loader2,
@@ -416,14 +415,6 @@ const MENU: Menu = {
 			icon: CreditCard,
 			// Only enabled for owners in cloud environments
 			isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && isCloud),
-		},
-		{
-			isSingle: true,
-			title: "License",
-			url: "/dashboard/settings/license",
-			icon: Key,
-			// Only enabled for owners
-			isEnabled: ({ auth }) => !!(auth?.role === "owner"),
 		},
 		{
 			isSingle: true,
