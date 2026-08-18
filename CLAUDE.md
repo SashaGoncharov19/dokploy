@@ -184,7 +184,20 @@ Restore anything global you mock, and do not depend on a mock another file insta
 `__test__/setup.bun.ts` preloads a db mock, but a narrower one from any other file
 replaces it wholesale.
 
-**3. There is no `importOriginal` and no `vi.hoisted`.** For the first, snapshot the
+**3. Native builtins are the exception to rule 1.** Ordinary modules update through
+live bindings, but `node:fs` and friends do not: a consumer that imported
+`existsSync` before your `mock.module` ran keeps the real one forever. Static imports
+are hoisted, so that is the default. Import the module under test **dynamically,
+after** the mock:
+
+```ts
+mock.module("node:fs", () => ({ ...actualFs, existsSync: () => true }));
+const { writeDomainsToCompose } = await import("@dokploy/server/utils/docker/domain");
+```
+
+This one is easy to miss precisely because rule 1 holds everywhere else.
+
+**4. There is no `importOriginal` and no `vi.hoisted`.** For the first, snapshot the
 namespace into a plain object *before* mocking — reading it back afterwards recurses
 into the mock. For the second, just declare plain consts above the `mock.module` call;
 the wrapper only existed to feed a hoisted factory.
@@ -193,6 +206,15 @@ the wrapper only existed to feed a hoisted factory.
 test fail.** And check what you broke actually matters: sabotaging an uncovered
 function, or a branch whose outcome is unchanged, leaves the suite green and proves
 nothing either way.
+
+**Run the ported files individually too, not just the directory.** Because mocks are
+process-global, a directory can be green while a file in it is broken on its own -
+one compose test only passed because a *different* file in the same directory writes
+real files to disk, making its unmocked `existsSync` true by accident:
+
+```bash
+for f in $(find __test__/<dir> -name "*.test.ts"); do bun test "$f"; done
+```
 
 ---
 
