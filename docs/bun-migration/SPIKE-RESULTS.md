@@ -663,3 +663,44 @@ making 72 zod schema generations lazy across upstream schema files. Both are
 wide changes to files this fork otherwise leaves alone, so neither was made.
 Recorded so the next person does not spend the afternoon rediscovering that
 `--smol` is not the answer.
+
+---
+
+## Two build optimisations that were measured and rejected
+
+Both look obviously correct and neither survives measurement.
+
+### `experimental.optimizePackageImports` — no effect
+
+`lucide-react` is imported in 279 files, `date-fns` in 20, `recharts` in 16.
+Barrel packages like these are the textbook case for Next's
+`optimizePackageImports`, which rewrites `import { X } from "pkg"` to a direct
+path so the whole index is not pulled in.
+
+Adding `lucide-react`, `date-fns`, `recharts` and `lodash` to it changed the
+bundle by **zero bytes** on every page measured. Next 16 already applies this to
+these packages by default, so the config would have been decoration in an
+upstream file. Reverted.
+
+### Turbopack build — 4.7× faster, and rejected anyway
+
+| | webpack | turbopack |
+|---|---|---|
+| `next build` | 54.7s | **11.7s** |
+| application page | 2478K | 2659K (**+181K**) |
+| `/_app` | 755K | 776K |
+| `.next/server` | 62MB | 105MB |
+
+Turbopack builds in a fifth of the time and produces a meaningfully larger
+bundle. That is the wrong side of the trade for a self-hosted product: the build
+runs once in CI, where 43 seconds is a rounding error against the Docker layers
+around it, while the extra 181KB is downloaded by every user on every page,
+forever.
+
+For context on the scale: the lazy-loading work in this same session fought for
+119KB, 136KB and 419KB individually. Giving 181KB back to save CI time would
+have undone a third of it.
+
+Runtime compatibility was not even reached - `server.ts` already documents
+Turbopack's dev output being unresolvable under Bun. The bundle regression
+decided it first.
