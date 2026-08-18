@@ -3,7 +3,7 @@ import {
 	getRestoreCommand,
 	stripDatabaseSwitchCommand,
 } from "@dokploy/server/utils/restore/utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 const filter = (input: string) =>
 	execSync(stripDatabaseSwitchCommand, {

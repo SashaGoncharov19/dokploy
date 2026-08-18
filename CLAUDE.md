@@ -57,7 +57,7 @@ Never reintroduce one, and never write a script that mutates its `package.json`
 | bundle | `bun build` — never esbuild |
 | typecheck | `bun run --filter '*' typecheck` (`tsc --noEmit`) |
 | format / lint | `bun run format-and-lint` (biome) |
-| tests | `bun run test` (vitest) — see Tests below |
+| tests | `bun run test` — runs `bun test` **and** vitest, see Tests below |
 
 **`bun build` does not typecheck.** A green build says nothing about types. Run
 `typecheck` separately, always, before claiming a change compiles.
@@ -78,10 +78,18 @@ a clean checkout. Both are cheap to prevent:
 
 ### Native dependencies
 
-`node-pty`, `ssh2`, `bcrypt`, `better-sqlite3`, `sharp` and friends need postinstall
-scripts. Bun only runs those for packages listed in root `package.json`
-**`trustedDependencies`**. Adding a native dep without adding it there produces a
-package that installs fine and fails at runtime. Add it in the same commit.
+`ssh2`, `better-sqlite3`, `sharp` and friends need postinstall scripts. Bun only runs
+those for packages listed in root `package.json` **`trustedDependencies`**. Adding a
+native dep without adding it there produces a package that installs fine and fails at
+runtime. Add it in the same commit.
+
+Two things this list will not tell you:
+
+- **Bun aborts the whole install when any trusted package's script fails**, where pnpm
+  tolerates it. `tree-sitter` is not in the list because it cannot compile against Node
+  24's V8 headers at all — it was never building, pnpm just hid that.
+- **node-gyp needs Node**, which the `oven/bun` image does not ship. The Dockerfiles
+  install Node in the build stage for this reason alone; it never reaches runtime.
 
 ---
 
@@ -96,7 +104,15 @@ Prefer native Bun over the library it replaces:
   `Terminal` as their first argument: `data(terminal, chunk)`, not `data(chunk)`.
 - `Bun.file(p).text()` / `Bun.write()` — over `fs.readFile` / `writeFile` on hot paths
 - Bun auto-loads `.env`. Never `import "dotenv/config"`, never `-r dotenv/config`.
-- `fetch` is native. No `undici`.
+  `dotenv` itself stays a dependency — `utils/docker/utils.ts` uses its `parse()` for
+  user-supplied env files, which is a different job and has no Bun equivalent.
+- `fetch` is native. `undici` stays only for the `FileList` polyfill in
+  `utils/schema.ts`: Bun has `File`, not `FileList`.
+- **`pino` transports do not survive bundling.** `transport: { target: "pino-pretty" }`
+  spawns a worker thread loading `thread-stream/lib/worker.js` by absolute path, which
+  is not in the runtime image. Pass `pino-pretty` as a stream instead.
+- **`bun run x` does not put everything `x` spawns on Bun.** `next build` collects page
+  data in Node child processes, so `build-next` needs `bun --bun`.
 
 ### Two hard rules
 
@@ -124,11 +140,21 @@ implements `node:child_process` natively. Leave it alone.
 
 ## Tests
 
-Vitest today, migrating to `bun test` **gradually**, directory by directory
-(PLAN §13). Both runners are green in CI during the transition.
+Two runners during the transition, both green in CI (PLAN §13):
 
-- New tests: write for `bun test`.
+- **`bun test`** — the directories listed in `apps/dokploy` `test:bun`
+- **vitest** — everything else; `__test__/vitest.config.ts` excludes the ported ones
+
+`bun run test` runs both. **Porting a directory means moving it from the vitest
+`exclude` list into the `test:bun` list** — the two must stay complementary, or
+tests silently stop running in both.
+
+- New tests: write for `bun test`, importing from `bun:test`.
 - Existing tests: leave on vitest unless you are deliberately porting that directory.
+
+Note that `bun test` will happily execute a file that imports from `"vitest"` — so a
+directory can appear ported when it is not. Rewrite the imports to `bun:test` as part
+of the port, so the runner is visible in the file.
 
 When porting, `vi.mock` → `mock.module` is **not** a rename. `vi.mock` is hoisted
 above imports; `mock.module` is not, so a module already imported at the top of the

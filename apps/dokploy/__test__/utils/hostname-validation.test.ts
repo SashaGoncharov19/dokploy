@@ -1,5 +1,5 @@
 import { VALID_HOSTNAME_REGEX } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("VALID_HOSTNAME_REGEX", () => {
 	it.each([

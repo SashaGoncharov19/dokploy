@@ -1,5 +1,5 @@
 import { apiCreateRegistry, apiTestRegistry } from "@dokploy/server/db/schema";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("Registry Schema - Username case preservation (#4632)", () => {
 	const validBase = {

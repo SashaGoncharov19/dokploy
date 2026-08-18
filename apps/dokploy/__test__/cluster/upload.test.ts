@@ -1,6 +1,6 @@
 import type { Registry } from "@dokploy/server";
 import { getRegistryTag } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("getRegistryTag", () => {
 	// Helper to create a mock registry

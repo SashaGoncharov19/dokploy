@@ -13,7 +13,7 @@ import {
 	getMysqlRestoreCommand,
 	getPostgresRestoreCommand,
 } from "@dokploy/server/utils/restore/utils";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 // A stub replacing the real `docker` binary. It ignores exec/-i/$CONTAINER_ID,
 // exports the -e VAR=val pairs, and runs the inner `sh -c <script>` — so the

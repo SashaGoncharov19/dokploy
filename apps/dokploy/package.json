@@ -36,7 +36,9 @@
 		"docker:build:canary": "./docker/build.sh canary",
 		"docker:push:canary": "./docker/push.sh canary",
 		"version": "echo $(node -p \"require('./package.json').version\")",
-		"test": "vitest --config __test__/vitest.config.ts",
+		"test": "bun run test:bun && bun run test:vitest",
+		"test:bun": "bun test __test__/logs __test__/registry __test__/requests __test__/api __test__/cluster __test__/templates __test__/backups __test__/services __test__/utils",
+		"test:vitest": "vitest --config __test__/vitest.config.ts",
 		"generate:openapi": "bun scripts/generate-openapi.ts"
 	},
 	"dependencies": {

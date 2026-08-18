@@ -2,7 +2,7 @@ import {
 	getBackupOverviewIcon,
 	getServiceOverviewIcon,
 } from "@dokploy/server/services/overview";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 
 describe("getServiceOverviewIcon", () => {
 	test("returns a db icon for every known DB engine type", () => {
