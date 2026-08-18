@@ -704,3 +704,19 @@ have undone a third of it.
 Runtime compatibility was not even reached - `server.ts` already documents
 Turbopack's dev output being unresolvable under Bun. The bundle regression
 decided it first.
+
+### Two more that measurement rejected
+
+**Deduplicating `date-fns`.** Two major versions ship: our packages pin 3.6.0,
+`react-day-picker@10` requires 4.4.0. That is 63MB on disk across both copies.
+Forcing one version would mean either our code running on v4 - whose breaking
+changes are in timezone handling, exactly the kind that fails silently and
+produces wrong timestamps rather than errors - or holding react-day-picker back.
+The bundle is unaffected either way because only the imported functions are
+included. Left alone: a disk-size win is not worth a class of bug that does not
+announce itself.
+
+**Dropping `@tailwindcss/typography`.** `prose` appears in exactly one file
+(`analyze-logs.tsx`), which made the plugin look like dead weight. Removing it
+took the stylesheet from 192KB to 175KB - **17KB**, in exchange for breaking the
+formatting of the log-analysis output. Restored.
