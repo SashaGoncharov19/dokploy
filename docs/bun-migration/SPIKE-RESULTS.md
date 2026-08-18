@@ -233,6 +233,62 @@ runner while Next itself executes on Node (`bun --bun` forces otherwise). A cust
 that imports `next()` in-process, as Dokploy does, genuinely runs Next inside Bun — which
 is why this hit us and does not hit those templates.
 
+### Production verification on arm64
+
+Everything above is a spike or a CI run. This is the instance: installed with
+`install.sh` on Debian 13 (arm64, Proxmox LXC, 8GB), pulling the published multi-arch
+image from GHCR anonymously, deploying and serving real containers.
+
+All six WebSocket servers exercised by hand:
+
+| Endpoint | Mechanism | Result |
+|---|---|---|
+| `docker-container-terminal` | **Bun.Terminal** | interactive session, commands execute |
+| `docker-container-logs` | **Bun.Terminal** | live `docker logs --follow` stream |
+| `terminal` | ssh2 | interactive shell |
+| `listen-deployment` | ssh2 | live build output |
+| `docker-stats` | dockerode | live stats |
+| `drawer-logs` | — | works |
+
+`Bun.Terminal` is the one that mattered. Resize was confirmed by `stty size` inside the
+container while resizing the browser: `18 127` → `18 71` → `18 38`. The column count
+tracks the window, which proves the resize messages reach the PTY. The row count does
+not, because `docker-terminal.tsx:122` pins the panel at `h-[420px]` — a UI layout
+choice, unrelated to the runtime.
+
+Also verified: registration (exercising `Bun.password` and `Bun.sql` on the write path),
+the migration chain applying on first boot, and a three-image Compose stack deployed end
+to end.
+
+### Two installer traps found by installing for real
+
+Neither is caused by the Bun migration; both are upstream behaviour that only appears on
+a second install, and both are now handled in `install.sh`.
+
+**No `:latest` tag.** Version detection falls back to `latest`, which upstream publishes
+from `main`. This fork publishes from `canary` and has no releases, so the tag 404s and
+the service sits in `Starting` with `No such image`. The fallback is now
+`DOKPLOY_FALLBACK_VERSION`, defaulting to `canary`.
+
+**Stale database volume.** A full install runs `docker swarm leave`, which destroys every
+Docker Secret, then generates a new Postgres password — but the `dokploy-postgres` volume
+survives, and Postgres only applies `POSTGRES_PASSWORD` when initialising an empty data
+directory. The result is `FATAL: password authentication failed (28P01)`, invisible from
+`docker service logs` and reported by swarm only as `Starting`. The installer now refuses
+up front and offers `sh -s update` or `DOKPLOY_RESET_DB=true`.
+
+The second one also needed a second fix: removing the services is not enough, because
+their *stopped* containers keep the volume referenced and `docker volume rm` reports
+"volume is in use" for a container that is not running.
+
+### Not a bug: triplicated deploy log lines
+
+Worth recording because it looked like one. Deploy output repeated every Docker progress
+line three times. The compose file had three services sharing one image, and
+`docker compose pull` reports progress per service — `mariadb` and `redis` appeared once
+each, the shared image three times. Docker's own output, not a stream being subscribed
+to more than once.
+
 ### Docker image sizes
 
 Same machine, pre-migration commit vs now.

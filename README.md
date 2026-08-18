@@ -45,6 +45,8 @@ The migration is [planned in nine phases](docs/bun-migration/PLAN.md). **Four ar
 | 7 | Docker + CI | ⬜ |
 | 9 | Tests: vitest → `bun test`, gradually | 🟡 18 of 96 files ported |
 
+**Verified running in production** on a Raspberry-class arm64 host — see below.
+
 > **The web app now runs on Bun**, in production and in dev — verified against a real
 > database, with SSR, tRPC and WebSockets all responding. There are still no runtime
 > *performance* numbers; nothing has run under real load.
@@ -62,6 +64,33 @@ any timing number.
 18 of those files now run on `bun test` rather than vitest (193 tests). The rest stay on
 vitest until ported; `bun run test` runs both, and the two scopes are kept complementary
 so nothing silently stops running.
+
+### It runs in production on arm64
+
+Not a benchmark — a real instance, installed with the install script on Debian 13
+(arm64, Proxmox LXC), deploying and serving real containers. Every one of the six
+WebSocket servers was exercised by hand:
+
+| Feature | Mechanism | |
+|---|---|---|
+| Container terminal | **`Bun.Terminal`** | ✅ interactive session, commands execute |
+| Container logs | **`Bun.Terminal`** | ✅ live `docker logs --follow` stream |
+| Server terminal | `ssh2` | ✅ interactive shell |
+| Deployment console | `ssh2` | ✅ live build output |
+| Monitoring / stats | `dockerode` | ✅ |
+| Drawer logs | — | ✅ |
+
+Plus: registration (which exercises `Bun.password` **and** `Bun.sql` on the write path),
+the full migration chain applied on first boot, and a three-image Docker Compose stack
+deployed end to end.
+
+**The terminal is the result that matters.** `node-pty` under Bun dies ~8ms after spawn
+and throws `EBADF` on `resize()`. The `Bun.Terminal` replacement holds a session, runs
+commands, and `stty size` tracks the width as the browser window is resized — confirmed
+on real ARM hardware rather than in a spike.
+
+*(Row count stays fixed because the terminal panel is `h-[420px]` in the UI, not because
+resize fails — width changes prove the resize messages reach the PTY.)*
 
 ### The application runs on Bun, end to end
 
@@ -181,11 +210,12 @@ seconds saved.
 
 Stated plainly, because a benchmark table that omits its gaps is not worth reading:
 
-- **No runtime performance data.** The server runs on Bun now, but nothing here measures
-  request latency, throughput, or memory against Node.
-- **No production evidence.** No instance has run under sustained real load.
-- **No Docker image comparison.** Image size and cold-boot time come with phase 7.
-- **`node_modules` did not shrink.** 1.5G before, 1.5G after.
+- **No runtime performance data.** The server runs on Bun and is verified working, but
+  nothing here measures request latency, throughput, or memory against Node.
+- **No sustained-load evidence.** The instance above works; it has not been run under
+  production traffic for a meaningful period, and nothing here is a stability claim.
+- **`node_modules` did not shrink.** 1.5G before, 1.5G after. The service *images* did —
+  see above — but that is bundling, not the dependency tree.
 
 ## Known broken
 
