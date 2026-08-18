@@ -5,6 +5,7 @@ import {
 	Calendar as CalendarIcon,
 	InfoIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -33,7 +34,16 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { api, type RouterOutputs } from "@/utils/api";
-import { RequestDistributionChart } from "./request-distribution-chart";
+
+// recharts is ~340KB and this chart sits below the fold on one page.
+const RequestDistributionChart = dynamic(
+	() =>
+		import("./request-distribution-chart").then(
+			(m) => m.RequestDistributionChart,
+		),
+	{ ssr: false },
+);
+
 import { RequestsTable } from "./requests-table";
 
 export type LogEntry = NonNullable<
