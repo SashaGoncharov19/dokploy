@@ -1,7 +1,7 @@
+import { describe, expect, it } from "bun:test";
 import { execSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { quote } from "shell-quote";
-import { describe, expect, it } from "vitest";
 
 // Mirrors how getNodeInfo builds its command in services/docker.ts:
 //   `docker node inspect ${quote([nodeId])} --format '{{json .}}'`

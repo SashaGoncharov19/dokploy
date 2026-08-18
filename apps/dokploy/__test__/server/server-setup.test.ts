@@ -1,9 +1,9 @@
+import { describe, expect, it } from "bun:test";
 import { execFileSync, execSync } from "node:child_process";
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { defaultCommand, reportDockerVersion } from "@dokploy/server";
-import { describe, expect, it } from "vitest";
 
 const resolveBin = (name: string) =>
 	execSync(`command -v ${name}`, { encoding: "utf8" }).trim();

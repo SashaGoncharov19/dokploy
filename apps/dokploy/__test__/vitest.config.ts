@@ -23,6 +23,8 @@ export default defineConfig({
 			"**/__test__/queues/**",
 			"**/__test__/drop/**",
 			"**/__test__/traefik/**",
+			"**/__test__/server/**",
+			"**/__test__/permissions/**",
 		],
 		pool: "forks",
 		setupFiles: [path.resolve(__dirname, "setup.ts")],

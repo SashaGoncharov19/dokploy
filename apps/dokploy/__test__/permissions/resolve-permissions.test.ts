@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 
 const mockMemberData = (
 	role: string,
@@ -28,16 +28,16 @@ const mockMemberData = (
 let memberToReturn: ReturnType<typeof mockMemberData> =
 	mockMemberData("member");
 
-vi.mock("@dokploy/server/db", () => ({
+mock.module("@dokploy/server/db", () => ({
 	db: {
 		query: {
 			member: {
-				findFirst: vi.fn(() => Promise.resolve(memberToReturn)),
-				findMany: vi.fn(() => Promise.resolve([])),
+				findFirst: jest.fn(() => Promise.resolve(memberToReturn)),
+				findMany: jest.fn(() => Promise.resolve([])),
 			},
 			organizationRole: {
-				findFirst: vi.fn(),
-				findMany: vi.fn(() => Promise.resolve([])),
+				findFirst: jest.fn(),
+				findMany: jest.fn(() => Promise.resolve([])),
 			},
 		},
 	},
@@ -56,7 +56,7 @@ const ctx = {
 };
 
 beforeEach(() => {
-	vi.clearAllMocks();
+	jest.clearAllMocks();
 });
 
 describe("enterprise resources for static roles", () => {
