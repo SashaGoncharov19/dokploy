@@ -1,3 +1,4 @@
+import { describe, expect, it } from "bun:test";
 import {
 	DEFAULT_GITHUB_API_URL,
 	DEFAULT_GITHUB_URL,
@@ -5,7 +6,6 @@ import {
 	normalizeGithubUrl,
 	parseGithubBaseUrl,
 } from "@dokploy/server/utils/providers/github";
-import { describe, expect, it } from "vitest";
 
 const urlOf = (result: ReturnType<typeof parseGithubBaseUrl>) =>
 	"url" in result ? result.url : null;
