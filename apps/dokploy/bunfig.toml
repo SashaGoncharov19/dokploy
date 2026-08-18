@@ -1,0 +1,3 @@
+[test]
+# The bun-side equivalent of vitest's `setupFiles`; see __test__/db-mock.ts.
+preload = ["./__test__/setup.bun.ts"]
