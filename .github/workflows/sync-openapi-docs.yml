@@ -1,5 +1,10 @@
 name: Generate and Sync OpenAPI
 
+# Upstream-only: writes into upstream's docs repository, needs DOCS_SYNC_TOKEN.
+# The required secrets exist in Dokploy/dokploy and not in this fork, so every job
+# is gated on the repository rather than the file being deleted - deleting it would
+# conflict on every upstream merge. See docs/FORK-STRATEGY.md.
+
 on:
   push:
     branches:
@@ -14,6 +19,7 @@ on:
 
 jobs:
   generate-and-commit:
+    if: github.repository == 'Dokploy/dokploy'
     name: Generate OpenAPI and commit to Dokploy repo
     runs-on: ubuntu-latest
     steps:

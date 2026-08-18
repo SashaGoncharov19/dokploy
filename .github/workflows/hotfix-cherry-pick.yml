@@ -1,5 +1,10 @@
 name: Hotfix Cherry-Pick
 
+# Upstream-only: upstream's hotfix process, needs HOTFIX_PUSH_TOKEN.
+# The required secrets exist in Dokploy/dokploy and not in this fork, so every job
+# is gated on the repository rather than the file being deleted - deleting it would
+# conflict on every upstream merge. See docs/FORK-STRATEGY.md.
+
 on:
   pull_request_target:
     types: [closed, labeled]
@@ -10,7 +15,7 @@ concurrency:
 
 jobs:
   cherry-pick:
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'hotfix')
+    if: github.repository == 'Dokploy/dokploy' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'hotfix')
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,5 +1,10 @@
 name: Auto PR to main when version changes
 
+# Upstream-only: upstream's release automation, needs GH_PAT.
+# The required secrets exist in Dokploy/dokploy and not in this fork, so every job
+# is gated on the repository rather than the file being deleted - deleting it would
+# conflict on every upstream merge. See docs/FORK-STRATEGY.md.
+
 on:
   push:
     branches:
@@ -11,6 +16,7 @@ permissions:
 
 jobs:
   create-pr:
+    if: github.repository == 'Dokploy/dokploy'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

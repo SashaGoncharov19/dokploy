@@ -215,9 +215,21 @@ To update an existing install:
 curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh -s update
 ```
 
+### Architectures
+
+Images are published for **`linux/amd64` and `linux/arm64`**, built on native runners
+rather than under emulation. `docker pull` picks the right one, so a **Raspberry Pi 5**,
+an Ampere or Graviton VPS and an ordinary x86 box all use the same command.
+
+arm64 is not a guess: every image in this repository was first built and run on arm64
+(Apple Silicon) before any of it reached CI, including the docker CLI, nixpacks,
+railpack and buildpacks layers.
+
 ⚠️ **This installs a PaaS that manages Docker on the host.** It initialises Docker
-Swarm, creates an overlay network and writes to `/etc/dokploy`. Run it on a machine
-you intend to dedicate to it, not your laptop.
+Swarm, creates an overlay network and writes to `/etc/dokploy`. Run it on a machine you
+intend to dedicate to it, not your laptop. On a Pi that means an SSD rather than an SD
+card — deployments do a lot of disk I/O — and 8GB of RAM is a comfortable floor once
+Postgres, Traefik and your own containers are running.
 
 ## Working on it
 

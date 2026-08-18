@@ -1,10 +1,14 @@
 name: Publish images
 
 # Builds and publishes this fork's images to its own GitHub Container Registry.
-# Upstream's dokploy.yml pushes to Docker Hub under dokploy/* with secrets this
-# fork does not have, so it is disabled here (see the guard in that file).
 #
-# GHCR authenticates with the built-in GITHUB_TOKEN - no secrets to configure.
+# Upstream's dokploy.yml and deploy.yml push to Docker Hub under dokploy/* with
+# secrets this fork does not have; both are gated to the upstream repository.
+# GHCR authenticates with the built-in GITHUB_TOKEN, so there is nothing to set up.
+#
+# amd64 and arm64 are built on native runners rather than under QEMU: the web
+# image runs a full `next build`, and emulating that is slow enough to time out.
+# arm64 matters here - a Raspberry Pi 5 is arm64, as are Ampere/Graviton VPSes.
 
 on:
   push:
@@ -13,24 +17,23 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - dockerfile: Dockerfile
-            suffix: ""
-          - dockerfile: Dockerfile.server
-            suffix: "-api"
-          - dockerfile: Dockerfile.schedule
-            suffix: "-schedules"
+        image:
+          - { dockerfile: Dockerfile, suffix: "" }
+          - { dockerfile: Dockerfile.server, suffix: "-api" }
+          - { dockerfile: Dockerfile.schedule, suffix: "-schedules" }
+        platform:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.platform.runner }}
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v5
 
@@ -43,30 +46,57 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve tag
+      - name: Resolve image and tag
         id: meta
         run: |
           # GHCR requires a lowercase image path
-          image="$(echo "${REGISTRY}/${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')${{ matrix.suffix }}"
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            tag="latest"
-          else
-            tag="canary"
-          fi
-          echo "tags=${image}:${tag},${image}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          image="$(echo "${REGISTRY}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')${{ matrix.image.suffix }}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then tag="latest"; else tag="canary"; fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Prepare env file
         run: |
           cp apps/dokploy/.env.production.example .env.production
           cp apps/dokploy/.env.production.example apps/dokploy/.env.production
 
-      - name: Build and push
+      - name: Build and push (${{ matrix.platform.arch }})
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/${{ matrix.platform.arch }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}-${{ matrix.platform.arch }}
+          cache-from: type=gha,scope=${{ matrix.image.suffix }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.suffix }}-${{ matrix.platform.arch }}
+
+  manifest:
+    # Combines the per-arch tags into one multi-arch tag, so `docker pull` picks
+    # the right architecture automatically.
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        suffix: ["", "-api", "-schedules"]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifest
+        run: |
+          image="$(echo "${REGISTRY}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')${{ matrix.suffix }}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then tag="latest"; else tag="canary"; fi
+          docker buildx imagetools create -t "${image}:${tag}" \
+            "${image}:${tag}-amd64" \
+            "${image}:${tag}-arm64"
+          docker buildx imagetools create -t "${image}:${{ github.sha }}" \
+            "${image}:${tag}-amd64" \
+            "${image}:${tag}-arm64"
+          echo "Published ${image}:${tag} (amd64 + arm64)"

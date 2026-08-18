@@ -99,6 +99,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
   combine-manifests:
+    if: github.repository == 'Dokploy/dokploy'
     needs: [docker-amd, docker-arm]
     runs-on: ubuntu-latest
     steps:
@@ -142,8 +143,8 @@ jobs:
           fi
 
   generate-release:
+    if: github.repository == 'Dokploy/dokploy' && github.ref == 'refs/heads/main'
     needs: [combine-manifests]
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}
@@ -183,8 +184,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sync-version:
+    if: github.repository == 'Dokploy/dokploy' && github.ref == 'refs/heads/main'
     needs: [generate-release]
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
