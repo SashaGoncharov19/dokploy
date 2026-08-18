@@ -7,25 +7,20 @@ import {
 import { and, eq } from "drizzle-orm";
 import { getOrganizationOwnerId } from "./sso";
 
-export const hasValidLicense = async (organizationId: string) => {
-	const ownerId = await getOrganizationOwnerId(organizationId);
-
-	if (!ownerId) {
-		return false;
-	}
-
-	const currentUser = await db.query.user.findFirst({
-		where: eq(user.id, ownerId),
-		columns: {
-			enableEnterpriseFeatures: true,
-			isValidEnterpriseLicense: true,
-		},
-	});
-	return !!(
-		currentUser?.enableEnterpriseFeatures &&
-		currentUser?.isValidEnterpriseLicense
-	);
-};
+/**
+ * Enterprise licensing is removed in this fork: every feature is available.
+ *
+ * Kept as a function returning true, rather than deleted outright, so this change
+ * is one line to revert while the behaviour is being verified. The call sites and
+ * the dead branches behind them come out separately - see
+ * .claude/skills/remove-enterprise-license/SKILL.md.
+ *
+ * Note this is not purely a feature flag. Three callers use it to choose between
+ * different access-control behaviours, and in getAccessibleServerIds the
+ * unlicensed branch was the *permissive* one - hence migration 0186, which seeds
+ * member."accessedServers" so nobody loses server visibility.
+ */
+export const hasValidLicense = async (_organizationId: string) => true;
 
 export const resolveOrganizationDefaultRole = async (
 	organizationId: string,
