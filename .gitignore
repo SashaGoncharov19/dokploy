@@ -12,6 +12,10 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+# Created from apps/dokploy/.env.production.example by CI and by local docker
+# builds; the Dockerfile copies it. Never commit it - apps/dokploy/.gitignore
+# already ignores its own copy, the root one was missed.
+.env.production
 
 openapi.json
 

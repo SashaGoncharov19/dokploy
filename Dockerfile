@@ -21,7 +21,12 @@ COPY . .
 RUN --mount=type=cache,id=bun,target=/root/.bun/install/cache bun install --frozen-lockfile
 
 ENV NODE_ENV=production
-RUN bun run --filter dokploy build
+# `.next/cache` is webpack's build cache - 720MB in this image, and useless at
+# runtime. It has to go before the COPY below: deleting it in the runtime stage
+# would leave the bytes sitting in the copied layer. `trace` is a build artefact
+# for the same reason.
+RUN bun run --filter dokploy build \
+    && rm -rf apps/dokploy/.next/cache apps/dokploy/.next/trace
 
 FROM base AS dokploy
 # The workspace layout is preserved because node_modules uses relative symlinks
