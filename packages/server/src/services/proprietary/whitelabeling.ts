@@ -1,6 +1,4 @@
 import { IS_CLOUD } from "@dokploy/server/constants";
-import { db } from "@dokploy/server/db";
-import { hasValidLicense } from "@dokploy/server/services/proprietary/license-key";
 import { getWebServerSettings } from "@dokploy/server/services/web-server-settings";
 
 export interface PublicWhitelabelingConfig {
@@ -16,15 +14,56 @@ export interface PublicWhitelabelingConfig {
 	footerText: string | null;
 }
 
-// Self-hosted is single-tenant; gate on the oldest organization's license,
-// mirroring resolveLocalConcurrency in server/queues/concurrency.ts. Used only
-// for unauthenticated requests (no active organization in session).
-const hasAnyValidLicense = async (): Promise<boolean> => {
-	const org = await db.query.organization.findFirst({
-		columns: { id: true },
-		orderBy: (organization, { asc }) => [asc(organization.createdAt)],
-	});
-	return org ? await hasValidLicense(org.id) : false;
+/**
+ * Branding this fork ships with, so a fresh install identifies itself as the Bun
+ * build without anyone configuring whitelabeling first.
+ *
+ * Only the fields the interface actually renders are set. appName is deliberately
+ * left null: nothing outside the whitelabeling settings screen reads it, so
+ * setting it would suggest an effect it does not have.
+ *
+ * Anything an administrator saves overrides these, field by field.
+ */
+export const DEFAULT_WHITELABELING = {
+	appName: null,
+	appDescription: "Dokploy running on Bun",
+	logoUrl: null,
+	loginLogoUrl: null,
+	faviconUrl: null,
+	customCss: null,
+	metaTitle: "Dokploy Bun",
+	errorPageTitle: null,
+	errorPageDescription: null,
+	footerText: "Dokploy Bun",
+} satisfies PublicWhitelabelingConfig;
+
+/**
+ * Stored config wins field by field; unset fields fall back to this fork's
+ * defaults. A stored empty string counts as unset - the settings form writes ""
+ * for a cleared input, and treating that as "no logo, no title" is what the
+ * administrator meant.
+ */
+export const withDefaultWhitelabeling = <
+	T extends Partial<PublicWhitelabelingConfig>,
+>(
+	config: T | null | undefined,
+): T & PublicWhitelabelingConfig => {
+	// Generic so fields outside PublicWhitelabelingConfig - supportUrl, docsUrl -
+	// survive the merge instead of being narrowed away.
+	const merged = {
+		...DEFAULT_WHITELABELING,
+		...(config ?? {}),
+	} as T & PublicWhitelabelingConfig;
+
+	for (const key of Object.keys(
+		DEFAULT_WHITELABELING,
+	) as (keyof PublicWhitelabelingConfig)[]) {
+		const value = config?.[key];
+		if (value === undefined || value === null || value === "") {
+			merged[key] = DEFAULT_WHITELABELING[key];
+		}
+	}
+	return merged;
 };
 
 /**
@@ -36,23 +75,6 @@ export const getPublicWhitelabelingConfig =
 		if (IS_CLOUD) {
 			return null;
 		}
-		if (!(await hasAnyValidLicense())) {
-			return null;
-		}
 		const settings = await getWebServerSettings();
-		const config = settings?.whitelabelingConfig;
-		if (!config) return null;
-
-		return {
-			appName: config.appName,
-			appDescription: config.appDescription,
-			logoUrl: config.logoUrl,
-			loginLogoUrl: config.loginLogoUrl,
-			faviconUrl: config.faviconUrl,
-			customCss: config.customCss,
-			metaTitle: config.metaTitle,
-			errorPageTitle: config.errorPageTitle,
-			errorPageDescription: config.errorPageDescription,
-			footerText: config.footerText,
-		};
+		return withDefaultWhitelabeling(settings?.whitelabelingConfig);
 	};

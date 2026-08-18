@@ -1,9 +1,9 @@
 import {
 	getPublicWhitelabelingConfig,
 	getWebServerSettings,
-	hasValidLicense,
 	IS_CLOUD,
 	updateWebServerSettings,
+	withDefaultWhitelabeling,
 } from "@dokploy/server";
 import { TRPCError } from "@trpc/server";
 import { apiUpdateWhitelabeling } from "@/server/db/schema";
@@ -15,15 +15,14 @@ import {
 } from "../../trpc";
 
 export const whitelabelingRouter = createTRPCRouter({
-	get: protectedProcedure.query(async ({ ctx }) => {
+	get: protectedProcedure.query(async () => {
 		if (IS_CLOUD) {
 			return null;
 		}
-		if (!(await hasValidLicense(ctx.session.activeOrganizationId))) {
-			return null;
-		}
+		// Same merge as the public endpoint, so the sidebar footer and the login
+		// page agree on the branding before anyone configures anything.
 		const settings = await getWebServerSettings();
-		return settings?.whitelabelingConfig ?? null;
+		return withDefaultWhitelabeling(settings?.whitelabelingConfig);
 	}),
 
 	update: enterpriseProcedure
