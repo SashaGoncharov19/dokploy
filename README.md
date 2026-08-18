@@ -213,10 +213,20 @@ There are no tagged releases yet, so installs land on `canary`, which is what
 `publish-images.yml` publishes. Pin explicitly with `DOKPLOY_VERSION=canary` if you
 prefer to be sure.
 
-To update an existing install:
+To update an existing install, keeping your data:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh -s update
+```
+
+Re-running the **full** install over an existing database is refused, with instructions,
+rather than failing later: a full install generates a new Postgres password, but Postgres
+keeps the one it was first initialised with, so the app would start and then fail
+authentication. To wipe and start clean — **this destroys all Dokploy data**:
+
+```bash
+export DOKPLOY_RESET_DB=true
+curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
 ```
 
 ### Architectures

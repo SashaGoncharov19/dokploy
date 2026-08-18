@@ -12,6 +12,7 @@ DOKPLOY_IMAGE="${DOKPLOY_IMAGE:-ghcr.io/sashagoncharov19/dokploy-bun}"
 # Used when no GitHub release can be detected. canary is what publish-images.yml
 # pushes today; this becomes "latest" once the fork cuts its first release.
 DOKPLOY_FALLBACK_VERSION="${DOKPLOY_FALLBACK_VERSION:-canary}"
+DOKPLOY_INSTALL_URL="${DOKPLOY_INSTALL_URL:-https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh}"
 
 # Detect version from environment variable or default to latest
 # Usage with curl (export first): export DOKPLOY_VERSION=canary && curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
@@ -103,6 +104,66 @@ generate_random_password() {
     echo "$password"
 }
 
+# A full install regenerates the Postgres password: `docker swarm leave` below
+# destroys every Docker Secret, and a fresh one is created further down. The
+# dokploy-postgres volume survives both, and Postgres only applies
+# POSTGRES_PASSWORD when it initialises an *empty* data directory - so installing
+# over an existing volume authenticates with a password the database has never
+# seen:
+#
+#     FATAL: password authentication failed for user "dokploy"  (28P01)
+#
+# The service then sits in "Starting" indefinitely, and `docker service logs`
+# shows nothing, because the failure is inside the container rather than in
+# swarm. Fail here instead, where the cause is still obvious.
+check_existing_database() {
+    if ! docker volume inspect dokploy-postgres >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [ "${DOKPLOY_RESET_DB}" = "true" ]; then
+        echo "DOKPLOY_RESET_DB=true - removing the existing database volume."
+        docker service rm dokploy dokploy-postgres >/dev/null 2>&1 || true
+
+        # Removing the services is not enough: their stopped containers keep a
+        # reference to the volume, and `docker volume rm` then reports
+        # "volume is in use" for a container that is not even running.
+        i=0
+        while [ "$i" -lt 30 ]; do
+            holders=$(docker ps -aq --filter volume=dokploy-postgres 2>/dev/null)
+            if [ -n "$holders" ]; then
+                # shellcheck disable=SC2086
+                docker rm -f $holders >/dev/null 2>&1 || true
+            fi
+            docker volume rm dokploy-postgres >/dev/null 2>&1 && break
+            i=$((i + 1))
+            sleep 1
+        done
+        if docker volume inspect dokploy-postgres >/dev/null 2>&1; then
+            echo "Error: could not remove the dokploy-postgres volume - something is still using it." >&2
+            echo "Stop it and retry:  docker service rm dokploy dokploy-postgres && docker volume rm dokploy-postgres" >&2
+            exit 1
+        fi
+        echo "Existing database removed. Continuing with a clean install."
+        return 0
+    fi
+
+    echo "" >&2
+    echo "An existing Dokploy database was found (docker volume: dokploy-postgres)." >&2
+    echo "" >&2
+    echo "A full install generates a new database password, but Postgres keeps the one" >&2
+    echo "it was first initialised with - so this install would fail to authenticate." >&2
+    echo "" >&2
+    echo "  To upgrade and keep your data:" >&2
+    echo "    curl -sSL ${DOKPLOY_INSTALL_URL} | sh -s update" >&2
+    echo "" >&2
+    echo "  To wipe the database and install from scratch (DESTROYS ALL DOKPLOY DATA):" >&2
+    echo "    export DOKPLOY_RESET_DB=true" >&2
+    echo "    curl -sSL ${DOKPLOY_INSTALL_URL} | sh" >&2
+    echo "" >&2
+    exit 1
+}
+
 install_dokploy() {
     # Detect version tag
     VERSION_TAG=$(detect_version)
@@ -176,6 +237,8 @@ install_dokploy() {
         sleep 5
     fi
 
+
+    check_existing_database
 
     docker swarm leave --force 2>/dev/null
 
