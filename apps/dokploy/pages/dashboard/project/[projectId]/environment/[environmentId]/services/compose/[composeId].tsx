@@ -6,6 +6,7 @@ import type {
 	GetServerSidePropsContext,
 	InferGetServerSidePropsType,
 } from "next";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -30,8 +31,22 @@ import { ShowDockerLogsCompose } from "@/components/dashboard/compose/logs/show"
 import { ShowDockerLogsStack } from "@/components/dashboard/compose/logs/show-stack";
 import { UpdateCompose } from "@/components/dashboard/compose/update-compose";
 import { ShowBackups } from "@/components/dashboard/database/backups/show-backups";
-import { ComposeFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-compose-monitoring";
-import { ComposePaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-compose-monitoring";
+
+const ComposeFreeMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/free/container/show-free-compose-monitoring"
+		).then((m) => m.ComposeFreeMonitoring),
+	{ ssr: false },
+);
+const ComposePaidMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/paid/container/show-paid-compose-monitoring"
+		).then((m) => m.ComposePaidMonitoring),
+	{ ssr: false },
+);
+
 import { AssignComposeNetworks } from "@/components/dashboard/networks/assign-compose-networks";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";

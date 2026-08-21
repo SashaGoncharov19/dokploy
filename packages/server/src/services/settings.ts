@@ -342,7 +342,12 @@ export const reloadDockerResource = async (
 				imageTag = currentImageTag;
 			}
 
-			command = `docker service update --force --image dokploy/dokploy:${imageTag} ${resourceName}`;
+			// Must go through getDokployImage(). Hardcoding dokploy/dokploy here
+			// meant the update check looked at this fork's registry while the
+			// update itself pulled upstream's - and on canary that tag exists,
+			// so pressing Reload silently replaced this Bun build with
+			// upstream's Node one.
+			command = `docker service update --force --image ${getDokployImage()}:${imageTag} ${resourceName}`;
 		} else {
 			command = `docker service update --force ${resourceName}`;
 		}

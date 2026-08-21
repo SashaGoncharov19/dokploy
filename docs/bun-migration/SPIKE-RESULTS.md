@@ -614,3 +614,109 @@ Three real wins, one large one, and one non-result:
 - **Memory 17% lower idle, 42% lower after load.**
 - **Boot 1.3–1.4× faster**, cold and warm.
 - **Throughput unchanged.** Not a regression, not a win.
+
+---
+
+## Where the 626 MiB of idle memory actually goes
+
+Measured inside the running container rather than inferred, because the obvious
+levers turn out to do nothing.
+
+| Stage | RSS |
+|---|---|
+| bare `bun` process | 38 MB |
+| `+ import("next")` | 66 MB |
+| `+ import("@dokploy/server")` | **450 MB** |
+| full server at rest | 637 MB |
+| after loading 11 dashboard pages | 661 MB |
+
+**`bun --smol` changes nothing** - 627.0 MB against 626.6 MB. That is the useful
+negative result: `--smol` shrinks the JS heap, so if it does not help, the memory
+is not heap pressure the GC could relieve. Confirmed by the process map: 640 MB
+of the RSS is anonymous, only 47 MB file-backed.
+
+The cost is concentrated in one import. Breaking it down:
+
+| Module | RSS added |
+|---|---|
+| `@dokploy/server/db` | **169 MB** |
+| `better-auth` | 37 MB |
+| `dockerode` | 27 MB |
+| `drizzle-zod` | 22 MB |
+| `drizzle-orm` | 9 MB |
+| `ssh2` | 2 MB |
+
+`db/index.ts` hands the entire schema to `drizzle(dbUrl, { schema })` so the
+relational query API (`db.query.*`) works, and the schema is 7527 lines across
+67 tables with 72 `createSelectSchema`/`createInsertSchema` calls evaluated at
+module load. That is the 169 MB, and it is one copy - not the duplication the
+comment in that file warns about.
+
+Checked that specifically: loading eleven dashboard pages grew RSS by 26 MB,
+about 2.4 MB per page. If each Next page chunk carried its own copy of the
+schema the growth would be far larger, so `transpilePackages` is not multiplying
+it.
+
+**Nothing here is a leak, and nothing is obviously wasteful.** Reducing it means
+either not giving drizzle the full schema - which removes `db.query.*` - or
+making 72 zod schema generations lazy across upstream schema files. Both are
+wide changes to files this fork otherwise leaves alone, so neither was made.
+Recorded so the next person does not spend the afternoon rediscovering that
+`--smol` is not the answer.
+
+---
+
+## Two build optimisations that were measured and rejected
+
+Both look obviously correct and neither survives measurement.
+
+### `experimental.optimizePackageImports` — no effect
+
+`lucide-react` is imported in 279 files, `date-fns` in 20, `recharts` in 16.
+Barrel packages like these are the textbook case for Next's
+`optimizePackageImports`, which rewrites `import { X } from "pkg"` to a direct
+path so the whole index is not pulled in.
+
+Adding `lucide-react`, `date-fns`, `recharts` and `lodash` to it changed the
+bundle by **zero bytes** on every page measured. Next 16 already applies this to
+these packages by default, so the config would have been decoration in an
+upstream file. Reverted.
+
+### Turbopack build — 4.7× faster, and rejected anyway
+
+| | webpack | turbopack |
+|---|---|---|
+| `next build` | 54.7s | **11.7s** |
+| application page | 2478K | 2659K (**+181K**) |
+| `/_app` | 755K | 776K |
+| `.next/server` | 62MB | 105MB |
+
+Turbopack builds in a fifth of the time and produces a meaningfully larger
+bundle. That is the wrong side of the trade for a self-hosted product: the build
+runs once in CI, where 43 seconds is a rounding error against the Docker layers
+around it, while the extra 181KB is downloaded by every user on every page,
+forever.
+
+For context on the scale: the lazy-loading work in this same session fought for
+119KB, 136KB and 419KB individually. Giving 181KB back to save CI time would
+have undone a third of it.
+
+Runtime compatibility was not even reached - `server.ts` already documents
+Turbopack's dev output being unresolvable under Bun. The bundle regression
+decided it first.
+
+### Two more that measurement rejected
+
+**Deduplicating `date-fns`.** Two major versions ship: our packages pin 3.6.0,
+`react-day-picker@10` requires 4.4.0. That is 63MB on disk across both copies.
+Forcing one version would mean either our code running on v4 - whose breaking
+changes are in timezone handling, exactly the kind that fails silently and
+produces wrong timestamps rather than errors - or holding react-day-picker back.
+The bundle is unaffected either way because only the imported functions are
+included. Left alone: a disk-size win is not worth a class of bug that does not
+announce itself.
+
+**Dropping `@tailwindcss/typography`.** `prose` appears in exactly one file
+(`analyze-logs.tsx`), which made the plugin look like dead weight. Removing it
+took the stylesheet from 192KB to 175KB - **17KB**, in exchange for breaking the
+formatting of the log-analysis output. Restored.

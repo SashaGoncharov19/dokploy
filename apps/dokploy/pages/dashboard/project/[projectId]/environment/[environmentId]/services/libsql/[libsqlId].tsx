@@ -6,6 +6,7 @@ import type {
 	GetServerSidePropsContext,
 	InferGetServerSidePropsType,
 } from "next";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -20,8 +21,22 @@ import { ShowExternalLibsqlCredentials } from "@/components/dashboard/libsql/gen
 import { ShowGeneralLibsql } from "@/components/dashboard/libsql/general/show-general-libsql";
 import { ShowInternalLibsqlCredentials } from "@/components/dashboard/libsql/general/show-internal-libsql-credentials";
 import { UpdateLibsql } from "@/components/dashboard/libsql/update-libsql";
-import { ContainerFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-container-monitoring";
-import { ContainerPaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring";
+
+const ContainerFreeMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/free/container/show-free-container-monitoring"
+		).then((m) => m.ContainerFreeMonitoring),
+	{ ssr: false },
+);
+const ContainerPaidMonitoring = dynamic(
+	() =>
+		import(
+			"@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring"
+		).then((m) => m.ContainerPaidMonitoring),
+	{ ssr: false },
+);
+
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
 import { LibsqlIcon } from "@/components/icons/data-tools-icons";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";

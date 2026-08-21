@@ -21,7 +21,35 @@ COPY . .
 RUN --mount=type=cache,id=bun,target=/root/.bun/install/cache bun install --frozen-lockfile
 
 ENV NODE_ENV=production
-RUN bun run --filter dokploy build
+# `.next/cache` is webpack's build cache - 720MB in this image, and useless at
+# runtime. It has to go before the COPY below: deleting it in the runtime stage
+# would leave the bytes sitting in the copied layer. `trace` is a build artefact
+# for the same reason.
+RUN bun run --filter dokploy build \
+    && rm -rf apps/dokploy/.next/cache apps/dokploy/.next/trace
+
+# node_modules is 71% of this image, and a good slice of it cannot run here.
+# Pruned after the build, so nothing above is affected:
+#   - devDependencies (biome ~114MB, typescript, simple-icons, vitest, drizzle-kit)
+#   - musl builds of swc and biome: this image is Debian/glibc, so they are dead
+#     weight that will never be loaded
+#   - the prisma/effect chain, pulled in as optionalDependencies of
+#     @better-auth/prisma-adapter. This fork uses drizzle; prisma is imported
+#     nowhere.
+# `bun install --production` on its own removes almost nothing here - it does not
+# prune an existing node_modules - so the dead weight is named explicitly.
+RUN bun install --production \
+    && find node_modules/.bun -maxdepth 1 \( \
+         `# musl builds: this image is Debian/glibc, they can never load` \
+         -name '*musl*' \
+         `# prisma chain, an optionalDependency of @better-auth/prisma-adapter;` \
+         `# this fork uses drizzle and imports prisma nowhere` \
+         -o -name 'prisma@*' -o -name '@prisma*' -o -name 'effect@*' \
+         `# build-time only: linter, compiler, and the icon set that exists` \
+         `# purely to generate lib/bundled-icons.ts` \
+         -o -name '@biomejs*' -o -name 'typescript@*' -o -name '@typescript*' \
+         -o -name 'simple-icons@*' -o -name 'vitest@*' -o -name 'drizzle-kit@*' \
+         \) -exec rm -rf {} + 2>/dev/null || true
 
 FROM base AS dokploy
 # The workspace layout is preserved because node_modules uses relative symlinks
