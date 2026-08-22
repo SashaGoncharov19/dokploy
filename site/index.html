@@ -100,7 +100,7 @@
   }
   .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
   .term-bar span { margin-left: 8px; font-size: 12px; color: var(--fg-mute); letter-spacing: .02em; }
-  .term pre { margin: 0; padding: 18px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; }
+  .term pre { margin: 0; padding: 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; }
   .term .p { color: var(--cream); user-select: none; }
   .hint { font-size: 13.5px; color: var(--fg-mute); margin: 0 0 28px; }
 
@@ -118,11 +118,13 @@
   /* ---------- stat strip ---------- */
   .strip {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--line-soft);
     border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-    background: var(--bg-lift); box-shadow: var(--shadow);
+    box-shadow: var(--shadow);
   }
-  .stat { padding: 22px 20px; border-right: 1px solid var(--line-soft); }
-  .stat:last-child { border-right: 0; }
+  /* The 1px gap is the divider, so it stays correct however the grid wraps -
+     a border-right here would leave a dangling line at the end of each row. */
+  .stat { padding: 22px 20px; background: var(--bg-lift); }
   .stat b {
     display: block; font-size: clamp(26px, 4vw, 34px); font-weight: 720;
     letter-spacing: -.03em; color: var(--cream); line-height: 1.1;
@@ -162,7 +164,7 @@
      scanning what the thing does, not admiring boxes */
   .feats { display: grid; gap: 2px 32px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
   .feat { display: grid; grid-template-columns: 20px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
-  .feat:last-child, .feat:nth-last-child(2) { border-bottom: 0; }
+  .feat:nth-last-child(-n+2) { border-bottom: 0; }
   .feat .tick { color: var(--cream); font-size: 15px; line-height: 1.5; }
   .feat b { font-weight: 640; font-size: 14.8px; }
   .feat span { display: block; color: var(--fg-mute); font-size: 13.8px; line-height: 1.55; margin-top: 1px; }
@@ -220,6 +222,75 @@
   .row p { margin: 0; font-size: 14.5px; color: var(--fg-mute); line-height: 1.6; }
   .row p strong { color: var(--fg); font-weight: 620; }
   @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 6px; } }
+
+  /* ---------- narrow screens ---------- */
+  @media (max-width: 760px) {
+    .wrap { padding: 0 20px; }
+    .band-hero { padding: 60px 0 32px; }
+    .band { padding: 32px 0 0; }
+    .band-section { padding-top: 56px; }
+
+    h1 { font-size: clamp(38px, 11vw, 54px); margin-top: 18px; }
+    .lede { font-size: 17px; margin-top: 18px; }
+    h2 { font-size: 25px; }
+    .sub { font-size: 15px; margin-bottom: 22px; }
+
+    /* wrap the command instead of hiding it in a sideways scroll - it is the
+       one line most visitors are here to copy */
+    .term pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; padding: 15px; }
+    .term { margin-top: 28px; }
+
+    .cta { gap: 8px; }
+    .btn { flex: 1 1 auto; justify-content: center; padding: 12px 16px; }
+
+    .stat { padding: 18px 16px; }
+    .stat b { font-size: 27px; }
+
+    .feats { gap: 0; }
+    .feat { border-bottom: 1px solid var(--line-soft); }
+    .feat:nth-last-child(-n+2) { border-bottom: 1px solid var(--line-soft); }
+    .feat:last-child { border-bottom: 0; }
+
+    .step { padding: 16px; gap: 13px; grid-template-columns: 28px 1fr; }
+    .note { padding: 17px 18px; }
+    .note p { font-size: 14.4px; }
+    .cards { gap: 12px; }
+    .card { padding: 17px; }
+
+    /* The table's most valuable column is the last one, and on a phone it was
+       the first to slide off the edge behind a scrollbar nobody notices. Each
+       row becomes its own block instead, so the win is always on screen. */
+    .panel table, .panel tbody, .panel tr, .panel td { display: block; width: 100%; }
+    .panel thead { display: none; }
+    .panel tr { border-bottom: 1px solid var(--line-soft); padding: 14px 16px; }
+    .panel tr:last-child { border-bottom: 0; }
+    .panel td { border: 0; padding: 0; }
+    .panel td:first-child { font-weight: 620; font-size: 14.5px; margin-bottom: 8px; }
+    .panel td[data-l] {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      padding: 3px 0; font-size: 13.2px;
+    }
+    .panel td[data-l]::before {
+      content: attr(data-l); color: var(--fg-mute); font-family: inherit;
+      font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600;
+    }
+    .panel td.d { margin-top: 4px; }
+    .scroll { overflow-x: visible; }
+
+    .faq details { padding: 0 17px; }
+    .faq summary { font-size: 14.6px; padding: 15px 0; }
+  }
+
+  @media (max-width: 420px) {
+    .wrap { padding: 0 16px; }
+    h1 { font-size: 36px; }
+    .badge { font-size: 11.5px; }
+    /* two up rather than one: four single-file stats push the fold too far */
+    .strip { grid-template-columns: 1fr 1fr; }
+    .stat b { font-size: 24px; }
+    .stat span { font-size: 12.2px; }
+    .btn { flex: 1 1 100%; }
+  }
 
   footer {
     margin-top: 76px; padding: 34px 0 60px; border-top: 1px solid var(--line);
@@ -336,13 +407,13 @@
     <table>
       <thead><tr><th>Metric</th><th>Node</th><th>Bun</th><th>Change</th></tr></thead>
       <tbody>
-        <tr><td>Shutdown — <code>docker stop</code> to exited</td><td class="n">3019 ms</td><td class="n">318 ms</td><td class="d up">9.5× faster</td></tr>
-        <tr><td>Memory, under load</td><td class="n">1315 MiB</td><td class="n">760 MiB</td><td class="d up">−42%</td></tr>
-        <tr><td>Runtime image</td><td class="n">3.22 GB</td><td class="n">1.96 GB</td><td class="d up">−39%</td></tr>
-        <tr><td>Cold boot, incl. 186 migrations</td><td class="n">4720 ms</td><td class="n">3411 ms</td><td class="d up">1.4× faster</td></tr>
-        <tr><td>Dependency install, warm cache</td><td class="n">21.9 s</td><td class="n">5.5 s</td><td class="d up">4× faster</td></tr>
-        <tr><td>API service image</td><td class="n">1.25 GB</td><td class="n">234 MB</td><td class="d up">5.3× smaller</td></tr>
-        <tr><td>SSR throughput</td><td class="n">780 rps</td><td class="n">745 rps</td><td class="d flat">no change</td></tr>
+        <tr><td>Shutdown — <code>docker stop</code> to exited</td><td class="n" data-l="Node">3019 ms</td><td class="n" data-l="Bun">318 ms</td><td data-l="Change" class="d up">9.5× faster</td></tr>
+        <tr><td>Memory, under load</td><td class="n" data-l="Node">1315 MiB</td><td class="n" data-l="Bun">760 MiB</td><td data-l="Change" class="d up">−42%</td></tr>
+        <tr><td>Runtime image</td><td class="n" data-l="Node">3.22 GB</td><td class="n" data-l="Bun">1.96 GB</td><td data-l="Change" class="d up">−39%</td></tr>
+        <tr><td>Cold boot, incl. 186 migrations</td><td class="n" data-l="Node">4720 ms</td><td class="n" data-l="Bun">3411 ms</td><td data-l="Change" class="d up">1.4× faster</td></tr>
+        <tr><td>Dependency install, warm cache</td><td class="n" data-l="Node">21.9 s</td><td class="n" data-l="Bun">5.5 s</td><td data-l="Change" class="d up">4× faster</td></tr>
+        <tr><td>API service image</td><td class="n" data-l="Node">1.25 GB</td><td class="n" data-l="Bun">234 MB</td><td data-l="Change" class="d up">5.3× smaller</td></tr>
+        <tr><td>SSR throughput</td><td class="n" data-l="Node">780 rps</td><td class="n" data-l="Bun">745 rps</td><td data-l="Change" class="d flat">no change</td></tr>
       </tbody>
     </table>
   </div>
