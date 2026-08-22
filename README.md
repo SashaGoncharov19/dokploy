@@ -1,7 +1,5 @@
 <div align="center">
-  <a href="https://dokploy.com">
-    <img src=".github/sponsors/logo.png" alt="Dokploy" width="100%" />
-  </a>
+  <img src=".github/banner.svg" alt="Dokploy Bun — self-hosted PaaS running on Bun" width="100%" />
 </div>
 
 # Dokploy Bun

@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dokploy Bun — self-hosted PaaS on Bun</title>
+<meta name="description" content="Dokploy running on Bun instead of Node.js. Every enterprise feature unlocked, 39% smaller image, 9.5× faster shutdown. Measured head-to-head, including what did not improve." />
+<meta property="og:title" content="Dokploy Bun" />
+<meta property="og:description" content="Self-hosted PaaS on Bun. Every feature unlocked, 39% smaller image, 9.5× faster shutdown — measured, including what did not improve." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#0a0c10" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23fbf0df'/><ellipse cx='36' cy='44' rx='6' ry='7'/><ellipse cx='64' cy='44' rx='6' ry='7'/><path d='M38 62 q12 12 24 0' stroke='%23000' stroke-width='5' fill='none' stroke-linecap='round'/></svg>" />
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-lift: #fafbfc;
+    --bg-sunk: #f2f4f7;
+    --fg: #14171c;
+    --fg-soft: #454c56;
+    --fg-mute: #6b7480;
+    --line: #e2e6eb;
+    --line-soft: #eef1f4;
+    --cream: #b07d2a;
+    --cream-bg: #fdf6e8;
+    --pos: #17803d;
+    --glow: rgba(224, 168, 74, .16);
+    --shadow: 0 1px 2px rgba(20,23,28,.06), 0 8px 24px -12px rgba(20,23,28,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0c10;
+      --bg-lift: #11141a;
+      --bg-sunk: #0d1015;
+      --fg: #eef2f6;
+      --fg-soft: #b6bec9;
+      --fg-mute: #7d8794;
+      --line: #232830;
+      --line-soft: #1a1e25;
+      --cream: #f3d5a3;
+      --cream-bg: #17140e;
+      --pos: #4ac26b;
+      --glow: rgba(243, 213, 163, .10);
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px -20px rgba(0,0,0,.8);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  a { color: inherit; }
+  /* One container, used everywhere. Bands own vertical rhythm, `.wrap` owns the
+     horizontal gutter - never both on the same element, or the later rule wins
+     and that column silently stops lining up with the rest of the page. */
+  .wrap { width: 100%; max-width: 1000px; margin: 0 auto; padding: 0 28px; }
+  .band { padding: 40px 0 0; }
+  .band-section { padding-top: 76px; }
+  .band-hero { padding: 96px 0 40px; position: relative; overflow: hidden; }
+  .band-hero::before {
+    content: ""; position: absolute; inset: -40% 20% auto -10%; height: 620px;
+    background: radial-gradient(50% 50% at 50% 50%, var(--glow), transparent 70%);
+    pointer-events: none;
+  }
+  .band-hero > * { position: relative; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; letter-spacing: .04em; font-weight: 600;
+    color: var(--cream); background: var(--cream-bg);
+    border: 1px solid var(--line); padding: 5px 12px 5px 8px; border-radius: 999px;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cream); }
+
+  h1 {
+    font-size: clamp(44px, 8.5vw, 78px); line-height: .98; letter-spacing: -.035em;
+    font-weight: 780; margin: 22px 0 0;
+  }
+  h1 .b {
+    background: linear-gradient(100deg, var(--cream), #e0a84a 60%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede {
+    font-size: clamp(17px, 2.2vw, 20.5px); line-height: 1.55; color: var(--fg-soft);
+    margin: 22px 0 0; max-width: 58ch;
+  }
+  .lede em { color: var(--fg); font-style: normal; font-weight: 600; }
+
+  /* ---------- terminal ---------- */
+  .term {
+    margin: 34px 0 12px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg-lift); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 7px; padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft); background: var(--bg-sunk);
+  }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+  .term-bar span { margin-left: 8px; font-size: 12px; color: var(--fg-mute); letter-spacing: .02em; }
+  .term pre { margin: 0; padding: 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; }
+  .term .p { color: var(--cream); user-select: none; }
+  .hint { font-size: 13.5px; color: var(--fg-mute); margin: 0 0 28px; }
+
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+    padding: 11px 18px; border-radius: 9px; font-weight: 600; font-size: 14.5px;
+    border: 1px solid var(--line); background: var(--bg-lift); color: var(--fg);
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  .btn:hover { transform: translateY(-1px); border-color: var(--cream); }
+  .btn.primary { background: var(--cream); border-color: var(--cream); color: #14171c; }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #0a0c10; } }
+
+  /* ---------- stat strip ---------- */
+  .strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--line-soft);
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  /* The 1px gap is the divider, so it stays correct however the grid wraps -
+     a border-right here would leave a dangling line at the end of each row. */
+  .stat { padding: 22px 20px; background: var(--bg-lift); }
+  .stat b {
+    display: block; font-size: clamp(26px, 4vw, 34px); font-weight: 720;
+    letter-spacing: -.03em; color: var(--cream); line-height: 1.1;
+  }
+  .stat span { display: block; font-size: 13px; color: var(--fg-mute); margin-top: 5px; }
+
+  /* ---------- sections ---------- */
+  .kicker {
+    font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--cream); margin: 0 0 10px;
+  }
+  h2 { font-size: clamp(26px, 3.6vw, 34px); letter-spacing: -.022em; margin: 0 0 10px; font-weight: 700; }
+  .sub { color: var(--fg-mute); margin: 0 0 26px; max-width: 62ch; font-size: 15.5px; }
+
+  .panel {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--bg-lift);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-mute); font-weight: 700; background: var(--bg-sunk); }
+  td.n { font-family: ui-monospace, monospace; white-space: nowrap; color: var(--fg-soft); font-size: 13.5px; }
+  td.d { font-family: ui-monospace, monospace; white-space: nowrap; font-weight: 700; font-size: 13.5px; }
+  .up { color: var(--pos); }
+  .flat { color: var(--fg-mute); font-weight: 600; }
+
+  .note {
+    margin: 20px 0 0; padding: 20px 22px; border-radius: 12px;
+    background: var(--cream-bg); border: 1px solid var(--line);
+  }
+  .note p { margin: 0; font-size: 15px; line-height: 1.65; color: var(--fg-soft); }
+  .note strong { color: var(--fg); }
+
+  /* feature list: two columns of plain rows, no card chrome - the point is
+     scanning what the thing does, not admiring boxes */
+  .feats { display: grid; gap: 2px 32px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .feat { display: grid; grid-template-columns: 20px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+  .feat:nth-last-child(-n+2) { border-bottom: 0; }
+  .feat .tick { color: var(--cream); font-size: 15px; line-height: 1.5; }
+  .feat b { font-weight: 640; font-size: 14.8px; }
+  .feat span { display: block; color: var(--fg-mute); font-size: 13.8px; line-height: 1.55; margin-top: 1px; }
+
+  .steps { display: grid; gap: 14px; counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start;
+    padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-lift);
+  }
+  .step .no {
+    width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+    background: var(--cream-bg); border: 1px solid var(--line); color: var(--cream);
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+  }
+  .step h3 { margin: 2px 0 4px; font-size: 15.5px; font-weight: 640; }
+  .step p { margin: 0; color: var(--fg-mute); font-size: 14.2px; line-height: 1.6; }
+  .step code { color: var(--cream); font-size: 13px; }
+
+  .faq { display: grid; gap: 10px; }
+  .faq details {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg-lift);
+    padding: 0 20px; overflow: hidden;
+  }
+  .faq summary {
+    cursor: pointer; padding: 16px 0; font-weight: 620; font-size: 15px;
+    list-style: none; display: flex; justify-content: space-between; gap: 16px; align-items: center;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; color: var(--cream); font-size: 19px; font-weight: 400; line-height: 1; }
+  .faq details[open] summary::after { content: "\2212"; }
+  .faq details[open] summary { border-bottom: 1px solid var(--line-soft); }
+  .faq p { margin: 0; padding: 14px 0 18px; color: var(--fg-mute); font-size: 14.4px; line-height: 1.65; }
+  .faq p strong { color: var(--fg); }
+  .faq code { color: var(--cream); font-size: 13px; }
+
+  .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); }
+  .card {
+    border: 1px solid var(--line); border-radius: 13px; padding: 20px; background: var(--bg-lift);
+    transition: border-color .14s ease, transform .14s ease;
+  }
+  .card:hover { border-color: var(--cream); transform: translateY(-2px); }
+  .card h3 { margin: 0 0 7px; font-size: 15.5px; font-weight: 660; }
+  .card p { margin: 0; color: var(--fg-mute); font-size: 14px; line-height: 1.6; }
+  .card code { font-size: 12.5px; color: var(--cream); }
+
+  .rows { display: grid; gap: 12px; }
+  .row {
+    display: grid; grid-template-columns: 108px 1fr; gap: 18px; align-items: start;
+    padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-lift);
+  }
+  .row .tag {
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+    color: var(--cream); padding-top: 1px;
+  }
+  .row p { margin: 0; font-size: 14.5px; color: var(--fg-mute); line-height: 1.6; }
+  .row p strong { color: var(--fg); font-weight: 620; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 6px; } }
+
+  /* ---------- narrow screens ---------- */
+  @media (max-width: 760px) {
+    .wrap { padding: 0 20px; }
+    .band-hero { padding: 60px 0 32px; }
+    .band { padding: 32px 0 0; }
+    .band-section { padding-top: 56px; }
+
+    h1 { font-size: clamp(38px, 11vw, 54px); margin-top: 18px; }
+    .lede { font-size: 17px; margin-top: 18px; }
+    h2 { font-size: 25px; }
+    .sub { font-size: 15px; margin-bottom: 22px; }
+
+    /* wrap the command instead of hiding it in a sideways scroll - it is the
+       one line most visitors are here to copy */
+    .term pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; padding: 15px; }
+    .term { margin-top: 28px; }
+
+    .cta { gap: 8px; }
+    .btn { flex: 1 1 auto; justify-content: center; padding: 12px 16px; }
+
+    .stat { padding: 18px 16px; }
+    .stat b { font-size: 27px; }
+
+    .feats { gap: 0; }
+    .feat { border-bottom: 1px solid var(--line-soft); }
+    .feat:nth-last-child(-n+2) { border-bottom: 1px solid var(--line-soft); }
+    .feat:last-child { border-bottom: 0; }
+
+    .step { padding: 16px; gap: 13px; grid-template-columns: 28px 1fr; }
+    .note { padding: 17px 18px; }
+    .note p { font-size: 14.4px; }
+    .cards { gap: 12px; }
+    .card { padding: 17px; }
+
+    /* The table's most valuable column is the last one, and on a phone it was
+       the first to slide off the edge behind a scrollbar nobody notices. Each
+       row becomes its own block instead, so the win is always on screen. */
+    .panel table, .panel tbody, .panel tr, .panel td { display: block; width: 100%; }
+    .panel thead { display: none; }
+    .panel tr { border-bottom: 1px solid var(--line-soft); padding: 14px 16px; }
+    .panel tr:last-child { border-bottom: 0; }
+    .panel td { border: 0; padding: 0; }
+    .panel td:first-child { font-weight: 620; font-size: 14.5px; margin-bottom: 8px; }
+    .panel td[data-l] {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      padding: 3px 0; font-size: 13.2px;
+    }
+    .panel td[data-l]::before {
+      content: attr(data-l); color: var(--fg-mute); font-family: inherit;
+      font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600;
+    }
+    .panel td.d { margin-top: 4px; }
+    .scroll { overflow-x: visible; }
+
+    .faq details { padding: 0 17px; }
+    .faq summary { font-size: 14.6px; padding: 15px 0; }
+  }
+
+  @media (max-width: 420px) {
+    .wrap { padding: 0 16px; }
+    h1 { font-size: 36px; }
+    .badge { font-size: 11.5px; }
+    /* two up rather than one: four single-file stats push the fold too far */
+    .strip { grid-template-columns: 1fr 1fr; }
+    .stat b { font-size: 24px; }
+    .stat span { font-size: 12.2px; }
+    .btn { flex: 1 1 100%; }
+  }
+
+  footer {
+    margin-top: 76px; padding: 34px 0 60px; border-top: 1px solid var(--line);
+    color: var(--fg-mute); font-size: 13.5px; line-height: 1.7;
+  }
+  footer a { color: var(--fg-soft); text-decoration: none; border-bottom: 1px solid var(--line); }
+  footer a:hover { color: var(--cream); border-color: var(--cream); }
+  footer p { margin: 0 0 10px; max-width: 70ch; }
+</style>
+</head>
+<body>
+
+<div class="band-hero">
+<div class="wrap">
+  <span class="badge"><i class="dot"></i> Fork of Dokploy · runs on Bun</span>
+  <h1>Dokploy <span class="b">Bun</span></h1>
+  <p class="lede">
+    Self-hosted PaaS — deploy applications, databases and Docker Compose stacks on your own
+    servers, with Traefik routing, backups and monitoring. <em>Same product, every enterprise
+    feature unlocked, and a runtime that starts and stops out of your way.</em>
+  </p>
+
+  <div class="term">
+    <div class="term-bar"><i></i><i></i><i></i><span>install</span></div>
+<pre><code><span class="p">$</span> curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh</code></pre>
+  </div>
+  <p class="hint">Linux · amd64 and arm64 · needs Docker. The installer sets up Swarm and Traefik for you.</p>
+
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/SashaGoncharov19/dokploy-bun">View on GitHub</a>
+    <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/releases">Releases</a>
+    <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">The measurements</a>
+  </div>
+</div>
+</div>
+
+<div class="band">
+<div class="wrap">
+  <div class="strip">
+    <div class="stat"><b>9.5×</b><span>faster shutdown</span></div>
+    <div class="stat"><b>−42%</b><span>memory under load</span></div>
+    <div class="stat"><b>−39%</b><span>image size</span></div>
+    <div class="stat"><b>4×</b><span>faster installs</span></div>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">What it does</p>
+  <h2>A control panel for your own servers</h2>
+  <p class="sub">
+    Point it at a machine you rent or own. It builds from Git, runs the containers, hands out
+    TLS certificates and keeps the backups — the parts of a PaaS you would otherwise rent by
+    the month.
+  </p>
+  <div class="feats">
+    <div class="feat"><span class="tick">&check;</span><div><b>Applications in any language</b><span>Node, PHP, Python, Go, Ruby, Rust — built from a Dockerfile, Nixpacks or buildpacks.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Databases with backups</b><span>PostgreSQL, MySQL, MariaDB, MongoDB, Redis and libsql, on a schedule you set.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Docker Compose stacks</b><span>Deployed and managed natively, not wrapped in something else.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Domains and TLS</b><span>Traefik routing with certificates issued and renewed for you.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Multi-server and multi-node</b><span>Deploy to remote hosts over SSH, or scale across a Docker Swarm.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Live monitoring</b><span>CPU, memory, storage and network per container and per server.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Terminals and logs in the browser</b><span>Shell into any container or host without leaving the dashboard.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>One-click templates</b><span>Plausible, Pocketbase, Cal.com and dozens more, preconfigured.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Notifications</b><span>Slack, Discord, Telegram and email on deploys, failures and backups.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>API and CLI</b><span>554 REST endpoints from a generated OpenAPI spec, with API-key auth.</span></div></div>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Getting started</p>
+  <h2>From nothing to a deployed app</h2>
+  <p class="sub">Assuming a fresh Linux box with Docker on it.</p>
+  <div class="steps">
+    <div class="step">
+      <span class="no">1</span>
+      <div>
+        <h3>Run the installer</h3>
+        <p>It initialises Docker Swarm, starts PostgreSQL and Traefik, and brings the panel up on port 3000. Nothing else on the host is touched.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="no">2</span>
+      <div>
+        <h3>Open it and create the first account</h3>
+        <p>Visit <code>http://your-server-ip:3000</code>. The first account registered becomes the owner; registration closes behind it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="no">3</span>
+      <div>
+        <h3>Create a project and deploy</h3>
+        <p>Connect a Git provider or paste a repository URL, pick a build method, add a domain. The first deploy usually takes a couple of minutes while the image builds.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Benchmarks</p>
+  <h2>What changing the runtime actually did</h2>
+  <p class="sub">
+    Head-to-head against a build of the pre-migration commit. Same host, same PostgreSQL,
+    byte-identical rendered output. Medians over repeated runs, and the harness is committed
+    so the numbers can be re-run rather than believed.
+  </p>
+
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>Metric</th><th>Node</th><th>Bun</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Shutdown — <code>docker stop</code> to exited</td><td class="n" data-l="Node">3019 ms</td><td class="n" data-l="Bun">318 ms</td><td data-l="Change" class="d up">9.5× faster</td></tr>
+        <tr><td>Memory, under load</td><td class="n" data-l="Node">1315 MiB</td><td class="n" data-l="Bun">760 MiB</td><td data-l="Change" class="d up">−42%</td></tr>
+        <tr><td>Runtime image</td><td class="n" data-l="Node">3.22 GB</td><td class="n" data-l="Bun">1.96 GB</td><td data-l="Change" class="d up">−39%</td></tr>
+        <tr><td>Cold boot, incl. 186 migrations</td><td class="n" data-l="Node">4720 ms</td><td class="n" data-l="Bun">3411 ms</td><td data-l="Change" class="d up">1.4× faster</td></tr>
+        <tr><td>Dependency install, warm cache</td><td class="n" data-l="Node">21.9 s</td><td class="n" data-l="Bun">5.5 s</td><td data-l="Change" class="d up">4× faster</td></tr>
+        <tr><td>API service image</td><td class="n" data-l="Node">1.25 GB</td><td class="n" data-l="Bun">234 MB</td><td data-l="Change" class="d up">5.3× smaller</td></tr>
+        <tr><td>SSR throughput</td><td class="n" data-l="Node">780 rps</td><td class="n" data-l="Bun">745 rps</td><td data-l="Change" class="d flat">no change</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <p>
+      <strong>Throughput did not improve.</strong> Both request benchmarks land inside noise, with
+      the Node baseline nominally ahead. The request path is bounded by Next.js and React
+      rendering, not by the engine underneath — so swapping the engine does not move it. Anyone
+      promising a faster dashboard from a runtime swap is selling something. What moved is
+      startup, shutdown and memory, and the shutdown figure is the one you feel: the service
+      runs <code>stop-first</code>, so every update waits on it.
+    </p>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Differences</p>
+  <h2>How it differs from upstream</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>Every feature unlocked</h3>
+      <p>No licence key, and nothing contacts a licensing API. Whitelabeling, SSO, SCIM, custom roles, audit logs and forward-auth all work out of the box.</p>
+    </div>
+    <div class="card">
+      <h3>Bun-native internals</h3>
+      <p><code>node-pty</code> → <code>Bun.Terminal</code>, <code>bcrypt</code> → <code>Bun.password</code>, <code>postgres.js</code> → <code>Bun.sql</code>. Existing password hashes keep working in both directions.</p>
+    </div>
+    <div class="card">
+      <h3>Its own registry</h3>
+      <p>Update checks point at this fork's images, so pressing Update can never quietly replace your build with an upstream Node one.</p>
+    </div>
+    <div class="card">
+      <h3>Still merges upstream</h3>
+      <p>Divergence is kept deliberately narrow so Dokploy's fixes keep flowing in. The last upstream merge — 45 commits — landed with zero conflicts.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Channels</p>
+  <h2>Two ways to track it</h2>
+  <p class="sub">Pick the one that matches how much churn you want.</p>
+  <div class="rows">
+    <div class="row">
+      <span class="tag">:latest</span>
+      <p><strong>Stable.</strong> Moves only on a tagged release. This is what the installer picks by default, and what the update button offers.</p>
+    </div>
+    <div class="row">
+      <span class="tag">:canary</span>
+      <p><strong>Pre-release.</strong> Published on every merge. Useful for trying fixes early — expect it to move under you.</p>
+    </div>
+  </div>
+  <div class="note">
+    <p>
+      Switching stable → canary is safe. <strong>Going back is not.</strong> Database migrations
+      only run forward, so once canary has applied newer ones, a stable image that does not know
+      about them cannot start cleanly against that database.
+    </p>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Questions</p>
+  <h2>The things worth asking about a fork</h2>
+  <div class="faq">
+    <details>
+      <summary>Why would I run a fork instead of Dokploy itself?</summary>
+      <p>Two reasons, and neither is "it is faster at serving pages" — it is not. First, every
+      enterprise feature is unlocked, so whitelabeling, SSO, SCIM, custom roles and audit logs
+      work without a licence key. Second, the runtime differences that <strong>are</strong> real:
+      shutdown is 9.5× quicker, which you feel on every update, and the image is 39% smaller.
+      If neither matters to you, upstream Dokploy is an excellent choice and you should use it.</p>
+    </details>
+    <details>
+      <summary>Is it kept up to date with upstream?</summary>
+      <p>Yes, and deliberately so. Divergence is kept narrow specifically to keep merges cheap —
+      the last upstream merge brought in 45 commits and landed with <strong>zero conflicts</strong>.
+      That is the whole reason this fork refuses to reformat files it is not otherwise changing.</p>
+    </details>
+    <details>
+      <summary>Can I migrate an existing Dokploy install to this?</summary>
+      <p>Yes — it is the same database schema, so pointing this image at your existing volume
+      works. One migration matters: <code>0186</code> backfills server assignments before the
+      enterprise gates open, because unlocking them narrows visibility from every organisation
+      server to only assigned ones. Without the backfill your member-role users would open the
+      dashboard to an empty list. It is idempotent and verified against real PostgreSQL.</p>
+    </details>
+    <details>
+      <summary>Can I go back to upstream if I change my mind?</summary>
+      <p>Yes. Password hashes are compatible in both directions, and the two licence columns are
+      deliberately still in the schema so an upstream image can read the database. That is why
+      they have not been dropped yet.</p>
+    </details>
+    <details>
+      <summary>How do I know the benchmark numbers are real?</summary>
+      <p>Because the harness that produced them is committed — <code>scripts/runtime-benchmark.ts</code>
+      builds its own PostgreSQL and containers, runs every phase and tears it down. The write-up
+      also records the measurements that <strong>failed</strong>: a Turbopack build that was 4.7×
+      faster and rejected for making the bundle larger, a config change that did nothing, and a
+      first benchmark pass whose conclusion turned out to be wrong.</p>
+    </details>
+    <details>
+      <summary>Who maintains it?</summary>
+      <p>One person, in the open. That is worth knowing before you put production on it. The
+      upstream project it tracks is considerably larger and better resourced, and everything the
+      product does comes from there.</p>
+    </details>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Upgrading</p>
+  <h2>Coming from an unlicensed Dokploy</h2>
+  <p class="sub">One migration deserves a read before you run it.</p>
+  <div class="rows">
+    <div class="row">
+      <span class="tag">0186</span>
+      <p>Unlocking the enterprise gates flips server visibility from <strong>every organisation server</strong> to <strong>only assigned servers</strong>. This migration backfills the assignments first, so a member-role user sees exactly what they saw before. Without it, they would open the dashboard to nothing.</p>
+    </div>
+    <div class="row">
+      <span class="tag">rollback</span>
+      <p>The two licence columns are deliberately still in place, so going back to an upstream image remains possible.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<footer>
+<div class="wrap">
+  <p>
+    Built on <a href="https://github.com/Dokploy/dokploy">Dokploy</a> by Mauricio Siu and its
+    contributors. All of the product is theirs — this fork changes the runtime and removes the
+    licence gates. Code under the same licences as upstream, including the DSAL terms covering
+    <code>/proprietary</code>.
+  </p>
+  <p>
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun">Source</a> ·
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">Every measurement, including the ones that failed</a> ·
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/PLAN.md">Migration plan</a>
+  </p>
+</div>
+</footer>
+
+</body>
+</html>
