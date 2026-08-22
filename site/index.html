@@ -158,6 +158,46 @@
   .note p { margin: 0; font-size: 15px; line-height: 1.65; color: var(--fg-soft); }
   .note strong { color: var(--fg); }
 
+  /* feature list: two columns of plain rows, no card chrome - the point is
+     scanning what the thing does, not admiring boxes */
+  .feats { display: grid; gap: 2px 32px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .feat { display: grid; grid-template-columns: 20px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+  .feat:last-child, .feat:nth-last-child(2) { border-bottom: 0; }
+  .feat .tick { color: var(--cream); font-size: 15px; line-height: 1.5; }
+  .feat b { font-weight: 640; font-size: 14.8px; }
+  .feat span { display: block; color: var(--fg-mute); font-size: 13.8px; line-height: 1.55; margin-top: 1px; }
+
+  .steps { display: grid; gap: 14px; counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start;
+    padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-lift);
+  }
+  .step .no {
+    width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+    background: var(--cream-bg); border: 1px solid var(--line); color: var(--cream);
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+  }
+  .step h3 { margin: 2px 0 4px; font-size: 15.5px; font-weight: 640; }
+  .step p { margin: 0; color: var(--fg-mute); font-size: 14.2px; line-height: 1.6; }
+  .step code { color: var(--cream); font-size: 13px; }
+
+  .faq { display: grid; gap: 10px; }
+  .faq details {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg-lift);
+    padding: 0 20px; overflow: hidden;
+  }
+  .faq summary {
+    cursor: pointer; padding: 16px 0; font-weight: 620; font-size: 15px;
+    list-style: none; display: flex; justify-content: space-between; gap: 16px; align-items: center;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; color: var(--cream); font-size: 19px; font-weight: 400; line-height: 1; }
+  .faq details[open] summary::after { content: "\2212"; }
+  .faq details[open] summary { border-bottom: 1px solid var(--line-soft); }
+  .faq p { margin: 0; padding: 14px 0 18px; color: var(--fg-mute); font-size: 14.4px; line-height: 1.65; }
+  .faq p strong { color: var(--fg); }
+  .faq code { color: var(--cream); font-size: 13px; }
+
   .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); }
   .card {
     border: 1px solid var(--line); border-radius: 13px; padding: 20px; background: var(--bg-lift);
@@ -223,6 +263,61 @@
     <div class="stat"><b>−42%</b><span>memory under load</span></div>
     <div class="stat"><b>−39%</b><span>image size</span></div>
     <div class="stat"><b>4×</b><span>faster installs</span></div>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">What it does</p>
+  <h2>A control panel for your own servers</h2>
+  <p class="sub">
+    Point it at a machine you rent or own. It builds from Git, runs the containers, hands out
+    TLS certificates and keeps the backups — the parts of a PaaS you would otherwise rent by
+    the month.
+  </p>
+  <div class="feats">
+    <div class="feat"><span class="tick">&check;</span><div><b>Applications in any language</b><span>Node, PHP, Python, Go, Ruby, Rust — built from a Dockerfile, Nixpacks or buildpacks.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Databases with backups</b><span>PostgreSQL, MySQL, MariaDB, MongoDB, Redis and libsql, on a schedule you set.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Docker Compose stacks</b><span>Deployed and managed natively, not wrapped in something else.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Domains and TLS</b><span>Traefik routing with certificates issued and renewed for you.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Multi-server and multi-node</b><span>Deploy to remote hosts over SSH, or scale across a Docker Swarm.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Live monitoring</b><span>CPU, memory, storage and network per container and per server.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Terminals and logs in the browser</b><span>Shell into any container or host without leaving the dashboard.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>One-click templates</b><span>Plausible, Pocketbase, Cal.com and dozens more, preconfigured.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>Notifications</b><span>Slack, Discord, Telegram and email on deploys, failures and backups.</span></div></div>
+    <div class="feat"><span class="tick">&check;</span><div><b>API and CLI</b><span>554 REST endpoints from a generated OpenAPI spec, with API-key auth.</span></div></div>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Getting started</p>
+  <h2>From nothing to a deployed app</h2>
+  <p class="sub">Assuming a fresh Linux box with Docker on it.</p>
+  <div class="steps">
+    <div class="step">
+      <span class="no">1</span>
+      <div>
+        <h3>Run the installer</h3>
+        <p>It initialises Docker Swarm, starts PostgreSQL and Traefik, and brings the panel up on port 3000. Nothing else on the host is touched.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="no">2</span>
+      <div>
+        <h3>Open it and create the first account</h3>
+        <p>Visit <code>http://your-server-ip:3000</code>. The first account registered becomes the owner; registration closes behind it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="no">3</span>
+      <div>
+        <h3>Create a project and deploy</h3>
+        <p>Connect a Git provider or paste a repository URL, pick a build method, add a domain. The first deploy usually takes a couple of minutes while the image builds.</p>
+      </div>
+    </div>
   </div>
 </div>
 </div>
@@ -311,6 +406,57 @@
       only run forward, so once canary has applied newer ones, a stable image that does not know
       about them cannot start cleanly against that database.
     </p>
+  </div>
+</div>
+</div>
+
+<div class="band band-section">
+<div class="wrap">
+  <p class="kicker">Questions</p>
+  <h2>The things worth asking about a fork</h2>
+  <div class="faq">
+    <details>
+      <summary>Why would I run a fork instead of Dokploy itself?</summary>
+      <p>Two reasons, and neither is "it is faster at serving pages" — it is not. First, every
+      enterprise feature is unlocked, so whitelabeling, SSO, SCIM, custom roles and audit logs
+      work without a licence key. Second, the runtime differences that <strong>are</strong> real:
+      shutdown is 9.5× quicker, which you feel on every update, and the image is 39% smaller.
+      If neither matters to you, upstream Dokploy is an excellent choice and you should use it.</p>
+    </details>
+    <details>
+      <summary>Is it kept up to date with upstream?</summary>
+      <p>Yes, and deliberately so. Divergence is kept narrow specifically to keep merges cheap —
+      the last upstream merge brought in 45 commits and landed with <strong>zero conflicts</strong>.
+      That is the whole reason this fork refuses to reformat files it is not otherwise changing.</p>
+    </details>
+    <details>
+      <summary>Can I migrate an existing Dokploy install to this?</summary>
+      <p>Yes — it is the same database schema, so pointing this image at your existing volume
+      works. One migration matters: <code>0186</code> backfills server assignments before the
+      enterprise gates open, because unlocking them narrows visibility from every organisation
+      server to only assigned ones. Without the backfill your member-role users would open the
+      dashboard to an empty list. It is idempotent and verified against real PostgreSQL.</p>
+    </details>
+    <details>
+      <summary>Can I go back to upstream if I change my mind?</summary>
+      <p>Yes. Password hashes are compatible in both directions, and the two licence columns are
+      deliberately still in the schema so an upstream image can read the database. That is why
+      they have not been dropped yet.</p>
+    </details>
+    <details>
+      <summary>How do I know the benchmark numbers are real?</summary>
+      <p>Because the harness that produced them is committed — <code>scripts/runtime-benchmark.ts</code>
+      builds its own PostgreSQL and containers, runs every phase and tears it down. The write-up
+      also records the measurements that <strong>failed</strong>: a Turbopack build that was 4.7×
+      faster and rejected for making the bundle larger, a config change that did nothing, and a
+      first benchmark pass whose conclusion turned out to be wrong.</p>
+    </details>
+    <details>
+      <summary>Who maintains it?</summary>
+      <p>One person, in the open. That is worth knowing before you put production on it. The
+      upstream project it tracks is considerably larger and better resourced, and everything the
+      product does comes from there.</p>
+    </details>
   </div>
 </div>
 </div>
