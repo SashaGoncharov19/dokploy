@@ -53,16 +53,19 @@
   }
   code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
   a { color: inherit; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 28px; }
-
-  /* ---------- hero ---------- */
-  .hero { position: relative; overflow: hidden; padding: 96px 0 72px; }
-  .hero::before {
+  /* One container, used everywhere. Bands own vertical rhythm, `.wrap` owns the
+     horizontal gutter - never both on the same element, or the later rule wins
+     and that column silently stops lining up with the rest of the page. */
+  .wrap { width: 100%; max-width: 1000px; margin: 0 auto; padding: 0 28px; }
+  .band { padding: 40px 0 0; }
+  .band-section { padding-top: 76px; }
+  .band-hero { padding: 96px 0 40px; position: relative; overflow: hidden; }
+  .band-hero::before {
     content: ""; position: absolute; inset: -40% 20% auto -10%; height: 620px;
     background: radial-gradient(50% 50% at 50% 50%, var(--glow), transparent 70%);
     pointer-events: none;
   }
-  .hero > * { position: relative; }
+  .band-hero > * { position: relative; }
 
   .badge {
     display: inline-flex; align-items: center; gap: 8px;
@@ -88,8 +91,8 @@
 
   /* ---------- terminal ---------- */
   .term {
-    margin: 36px 0 14px; border: 1px solid var(--line); border-radius: 12px;
-    background: var(--bg-lift); box-shadow: var(--shadow); overflow: hidden; max-width: 720px;
+    margin: 34px 0 12px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg-lift); box-shadow: var(--shadow); overflow: hidden;
   }
   .term-bar {
     display: flex; align-items: center; gap: 7px; padding: 11px 14px;
@@ -99,7 +102,7 @@
   .term-bar span { margin-left: 8px; font-size: 12px; color: var(--fg-mute); letter-spacing: .02em; }
   .term pre { margin: 0; padding: 18px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; }
   .term .p { color: var(--cream); user-select: none; }
-  .hint { font-size: 13.5px; color: var(--fg-mute); margin: 0 0 34px; }
+  .hint { font-size: 13.5px; color: var(--fg-mute); margin: 0 0 28px; }
 
   .cta { display: flex; gap: 10px; flex-wrap: wrap; }
   .btn {
@@ -116,7 +119,7 @@
   .strip {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-    background: var(--bg-lift); box-shadow: var(--shadow); margin: 8px 0 0;
+    background: var(--bg-lift); box-shadow: var(--shadow);
   }
   .stat { padding: 22px 20px; border-right: 1px solid var(--line-soft); }
   .stat:last-child { border-right: 0; }
@@ -127,7 +130,6 @@
   .stat span { display: block; font-size: 13px; color: var(--fg-mute); margin-top: 5px; }
 
   /* ---------- sections ---------- */
-  section { padding: 76px 0 0; }
   .kicker {
     font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
     color: var(--cream); margin: 0 0 10px;
@@ -180,7 +182,7 @@
   @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 6px; } }
 
   footer {
-    margin-top: 84px; padding: 34px 0 60px; border-top: 1px solid var(--line);
+    margin-top: 76px; padding: 34px 0 60px; border-top: 1px solid var(--line);
     color: var(--fg-mute); font-size: 13.5px; line-height: 1.7;
   }
   footer a { color: var(--fg-soft); text-decoration: none; border-bottom: 1px solid var(--line); }
@@ -190,7 +192,8 @@
 </head>
 <body>
 
-<div class="hero wrap">
+<div class="band-hero">
+<div class="wrap">
   <span class="badge"><i class="dot"></i> Fork of Dokploy · runs on Bun</span>
   <h1>Dokploy <span class="b">Bun</span></h1>
   <p class="lede">
@@ -211,7 +214,9 @@
     <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">The measurements</a>
   </div>
 </div>
+</div>
 
+<div class="band">
 <div class="wrap">
   <div class="strip">
     <div class="stat"><b>9.5×</b><span>faster shutdown</span></div>
@@ -220,8 +225,10 @@
     <div class="stat"><b>4×</b><span>faster installs</span></div>
   </div>
 </div>
+</div>
 
-<section class="wrap">
+<div class="band band-section">
+<div class="wrap">
   <p class="kicker">Benchmarks</p>
   <h2>What changing the runtime actually did</h2>
   <p class="sub">
@@ -255,9 +262,11 @@
       runs <code>stop-first</code>, so every update waits on it.
     </p>
   </div>
-</section>
+</div>
+</div>
 
-<section class="wrap">
+<div class="band band-section">
+<div class="wrap">
   <p class="kicker">Differences</p>
   <h2>How it differs from upstream</h2>
   <div class="cards">
@@ -278,9 +287,11 @@
       <p>Divergence is kept deliberately narrow so Dokploy's fixes keep flowing in. The last upstream merge — 45 commits — landed with zero conflicts.</p>
     </div>
   </div>
-</section>
+</div>
+</div>
 
-<section class="wrap">
+<div class="band band-section">
+<div class="wrap">
   <p class="kicker">Channels</p>
   <h2>Two ways to track it</h2>
   <p class="sub">Pick the one that matches how much churn you want.</p>
@@ -301,9 +312,11 @@
       about them cannot start cleanly against that database.
     </p>
   </div>
-</section>
+</div>
+</div>
 
-<section class="wrap">
+<div class="band band-section">
+<div class="wrap">
   <p class="kicker">Upgrading</p>
   <h2>Coming from an unlicensed Dokploy</h2>
   <p class="sub">One migration deserves a read before you run it.</p>
@@ -317,9 +330,11 @@
       <p>The two licence columns are deliberately still in place, so going back to an upstream image remains possible.</p>
     </div>
   </div>
-</section>
+</div>
+</div>
 
-<footer class="wrap">
+<footer>
+<div class="wrap">
   <p>
     Built on <a href="https://github.com/Dokploy/dokploy">Dokploy</a> by Mauricio Siu and its
     contributors. All of the product is theirs — this fork changes the runtime and removes the
@@ -331,6 +346,7 @@
     <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">Every measurement, including the ones that failed</a> ·
     <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/PLAN.md">Migration plan</a>
   </p>
+</div>
 </footer>
 
 </body>
