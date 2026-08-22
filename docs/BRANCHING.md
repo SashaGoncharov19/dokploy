@@ -37,8 +37,8 @@ name at or under 60 characters.
 | `ci/` | pipelines and workflows |
 | `docs/` | documentation only |
 | `test/` | tests only |
-| `hotfix/` | urgent production fix, branched from `main` |
-| `release/` | release preparation, e.g. `release/v0.31.0` |
+| `hotfix/` | urgent production fix, branched from `main`, merged back into `canary` |
+| `release/` | release preparation — bumping versions, changelog. Targets `canary`, because releases ship by fast-forwarding `main` to it |
 | `upstream/` | **reserved** — importing or merging upstream Dokploy changes |
 
 `upstream/` is never used for our own work. Seeing it in a PR title means the diff is
@@ -47,12 +47,21 @@ see [FORK-STRATEGY.md](FORK-STRATEGY.md).
 
 ## Base branches
 
-Inherited from the upstream project, unchanged:
+Branch names are inherited from upstream; what they mean here is slightly different,
+because this fork publishes its own releases.
 
-- **`canary`** — default branch. All normal work targets this.
-- **`main`** — stable. Only `hotfix/` and `release/` branches target it.
-- **`vendor/upstream`** — protected mirror of upstream. Never commit here, never
-  branch feature work from it.
+- **`canary`** — default branch. All normal work targets this. It is also the
+  **pre-release channel**: the `:canary` image and `-canary.N` tags are cut from it.
+- **`main`** — the **stable channel**. `:latest` and the version tag are cut from it.
+  It is not a branch you open pull requests against in the normal course of work — at
+  release time it is **fast-forwarded** to the commit on `canary` that was released, so
+  the two never diverge. Only `hotfix/` branches target it directly, and a hotfix must
+  be merged back into `canary` immediately so the fast-forward stays possible.
+- **`vendor/upstream`** — pristine local mirror of upstream. Never commit here, never
+  branch feature work from it. See [FORK-STRATEGY.md](FORK-STRATEGY.md).
+
+The fast-forward is what keeps `main` honest: if it ever refuses, `main` has commits
+`canary` does not, and something was merged in the wrong place. Check before forcing it.
 
 ## Rules
 

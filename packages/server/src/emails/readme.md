@@ -1,27 +1,29 @@
-# React Email Starter
+# Transactional email templates
 
-A live preview right in your browser so you don't need to keep sending real emails during development.
+The emails Dokploy sends — build succeeded, build failed, database backup, Docker
+cleanup, server threshold reached, invitations, email verification — written as React
+components with [React Email](https://react.email).
 
-## Getting Started
+`emails/` holds the templates that are actually sent. Several files alongside them
+(`stripe-welcome`, `plaid-verify-identity`, `notion-magic-link`, `vercel-invite-user`)
+are the starter's examples, kept as references for the component API rather than used.
 
-First, install the dependencies:
+## Previewing them
 
-```sh
-npm install
-# or
-yarn
+React Email renders the templates in a browser, so you can iterate without sending real
+mail:
+
+```bash
+cd packages/server/src/emails
+bun install
+bun run dev
 ```
 
-Then, run the development server:
+Then open [localhost:3000](http://localhost:3000).
 
-```sh
-npm run dev
-# or
-yarn dev
-```
-
-Open [localhost:3000](http://localhost:3000) with your browser to see the result.
+This directory has its own `package.json` because the preview server pulls in
+`react-email`, a dev-only tool that the runtime image has no reason to carry.
 
 ## License
 
-MIT License
+MIT, from the React Email starter this was derived from.

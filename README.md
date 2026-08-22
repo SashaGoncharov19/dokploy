@@ -10,6 +10,8 @@ servers, with Traefik routing, backups, monitoring and multi-server support.
 This is [Dokploy](https://github.com/Dokploy/dokploy) running on [Bun](https://bun.sh)
 instead of Node.js. Same product, same features, different runtime.
 
+**[sashagoncharov19.github.io/dokploy-bun](https://sashagoncharov19.github.io/dokploy-bun/)** — what it is, the numbers, and how to install it.
+
 **Images:** `ghcr.io/sashagoncharov19/dokploy-bun` · `linux/amd64` + `linux/arm64`
 
 ---
@@ -19,7 +21,7 @@ instead of Node.js. Same product, same features, different runtime.
 On a server you intend to dedicate to it, as root:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh | sh
 ```
 
 Then open `http://<your-server-ip>:3000`.
@@ -31,7 +33,7 @@ service discovery accordingly.
 **Updating**, keeping your data:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh -s update
+curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh | sh -s update
 ```
 
 Re-running the *full* installer over an existing database is refused with instructions,
@@ -131,7 +133,8 @@ and logs, server terminal, deployment console, monitoring, drawer logs), registr
 the migration chain, and real workloads — a multi-service Compose stack and a Gitea
 instance, both deployed and serving.
 
-The full test suite — 874 tests — passes on Bun in CI.
+The test suite — 883 tests, 762 of them on `bun test` and 121 still on vitest — passes
+in CI on both runners.
 
 Known gaps are listed honestly in
 [SPIKE-RESULTS.md](docs/bun-migration/SPIKE-RESULTS.md); the notable one is that no
@@ -155,10 +158,31 @@ Conventions live in [CLAUDE.md](CLAUDE.md), branch naming in
 [docs/BRANCHING.md](docs/BRANCHING.md), and the rules for staying mergeable with upstream
 in [docs/FORK-STRATEGY.md](docs/FORK-STRATEGY.md).
 
-### Versioning
+### Releases
 
-`v0.30.0-bun.1` means upstream's v0.30.0 running on Bun. The suffix appears in the UI,
+`v0.30.2-bun.1` means upstream's v0.30.2 running on Bun. The suffix appears in the UI,
 the startup log and the image tags.
+
+Two channels, one branch each:
+
+| Channel | Branch | Tag | Image |
+|---|---|---|---|
+| Stable | `main` | `v0.30.2-bun.1` | `:latest`, `:v0.30.2-bun.1` |
+| Pre-release | `canary` | `v0.30.2-bun.1-canary.1` | `:canary` |
+
+`install.sh` resolves the latest **stable** release, so a pre-release never reaches a
+machine that did not ask for it. To follow canary deliberately, set
+`DOKPLOY_VERSION=canary` before running the installer.
+
+Upgrading in place is a service update against the tag you want:
+
+```bash
+docker service update --image ghcr.io/sashagoncharov19/dokploy-bun:latest --force dokploy
+```
+
+Migrations run on boot and are forward-only, so **rolling back to an older image after
+an upgrade that migrated the schema is not supported.** Snapshot the database first if
+you need a way back.
 
 ---
 
