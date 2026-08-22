@@ -61,6 +61,31 @@ jobs:
           cp apps/dokploy/.env.production.example apps/dokploy/.env.production
 
       - name: Build and push (${{ matrix.platform.arch }})
+        id: push
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/${{ matrix.platform.arch }}
+          push: true
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}-${{ matrix.platform.arch }}
+          cache-from: type=gha,scope=${{ matrix.image.suffix }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.suffix }}-${{ matrix.platform.arch }}
+
+      # Six of these jobs push to GHCR at once, and GHCR answers a burst with a
+      # secondary rate limit - "denied: permission_denied" wearing a 403, which
+      # reads like a credentials problem and is not. It killed the publish for
+      # canary twice (runs 32151479013 and 32152177649), leaving the tag stale.
+      #
+      # The layers are already built and cached by this point, so a retry is
+      # cheap: it re-pushes rather than rebuilding.
+      - name: Back off before retrying
+        if: steps.push.outcome == 'failure'
+        run: sleep $(( (RANDOM % 60) + 60 ))
+
+      - name: Wait out the rate limit and retry the push
+        if: steps.push.outcome == 'failure'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -79,6 +104,10 @@ jobs:
     permissions:
       packages: write
     strategy:
+      # Serialised deliberately: these create six tags between them and take
+      # seconds each, so running them at once only adds to the GHCR burst that
+      # the retry above exists to survive.
+      max-parallel: 1
       matrix:
         suffix: ["", "-api", "-schedules"]
     steps:
@@ -96,10 +125,21 @@ jobs:
         run: |
           image="$(echo "${REGISTRY}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')${{ matrix.suffix }}"
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then tag="latest"; else tag="canary"; fi
-          docker buildx imagetools create -t "${image}:${tag}" \
+          # Same secondary rate limit as the build push; retry rather than
+          # leaving a half-published set of tags behind.
+          retry() {
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              echo "attempt $attempt failed, backing off" >&2
+              sleep $(( attempt * 30 ))
+            done
+            return 1
+          }
+
+          retry docker buildx imagetools create -t "${image}:${tag}" \
             "${image}:${tag}-amd64" \
             "${image}:${tag}-arm64"
-          docker buildx imagetools create -t "${image}:${{ github.sha }}" \
+          retry docker buildx imagetools create -t "${image}:${{ github.sha }}" \
             "${image}:${tag}-amd64" \
             "${image}:${tag}-arm64"
           echo "Published ${image}:${tag} (amd64 + arm64)"
@@ -119,7 +159,7 @@ jobs:
               v*) ;;
               *) version="v${version}" ;;
             esac
-            docker buildx imagetools create -t "${image}:${version}" \
+            retry docker buildx imagetools create -t "${image}:${version}" \
               "${image}:${tag}-amd64" \
               "${image}:${tag}-arm64"
             echo "Published ${image}:${version} (amd64 + arm64)"
