@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dokploy Bun — self-hosted PaaS on Bun</title>
+<meta name="description" content="Dokploy running on Bun instead of Node.js. Same product, every enterprise feature unlocked, 39% smaller image, 9.5× faster shutdown. Measured, not claimed." />
+<meta property="og:title" content="Dokploy Bun" />
+<meta property="og:description" content="Self-hosted PaaS on Bun. Every feature unlocked, 39% smaller image, measured head-to-head against the Node build." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>" />
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
+    --fg: #1f2328;
+    --fg-mute: #59636e;
+    --line: #d1d9e0;
+    --accent: #bc8c3d;
+    --accent-soft: #fbf0df;
+    --pos: #1a7f37;
+    --code-bg: #f6f8fa;
+    --max: 900px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --bg-soft: #151b23;
+      --fg: #e6edf3;
+      --fg-mute: #9198a1;
+      --line: #3d444d;
+      --accent: #f3d5a3;
+      --accent-soft: #1f1b13;
+      --pos: #3fb950;
+      --code-bg: #151b23;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  a { color: var(--accent); }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+
+  header { padding: 72px 0 48px; }
+  .eyebrow {
+    display: inline-block; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line);
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 20px;
+  }
+  h1 { font-size: clamp(38px, 7vw, 60px); line-height: 1.05; margin: 0 0 16px; letter-spacing: -.02em; }
+  h1 .accent { color: var(--accent); }
+  .lede { font-size: clamp(17px, 2.4vw, 20px); color: var(--fg-mute); margin: 0 0 32px; max-width: 62ch; }
+
+  pre.install {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; margin: 0 0 12px; font-size: 14px;
+  }
+  .hint { font-size: 14px; color: var(--fg-mute); margin: 0 0 32px; }
+
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 10px 18px; border-radius: 8px; text-decoration: none;
+    border: 1px solid var(--line); font-weight: 600; font-size: 15px; color: var(--fg);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #1f2328; }
+
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 26px; margin: 0 0 8px; letter-spacing: -.01em; }
+  .sub { color: var(--fg-mute); margin: 0 0 24px; max-width: 62ch; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-mute); font-weight: 600; }
+  td.num { font-family: ui-monospace, monospace; white-space: nowrap; }
+  .win { color: var(--pos); font-weight: 600; }
+  .flat { color: var(--fg-mute); }
+  .scroll { overflow-x: auto; }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--bg-soft); }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--fg-mute); font-size: 14.5px; }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--bg-soft);
+    padding: 16px 18px; border-radius: 0 8px 8px 0; margin: 20px 0 0;
+  }
+  .callout p { margin: 0; font-size: 15px; }
+
+  ul.plain { padding-left: 20px; margin: 0; }
+  ul.plain li { margin-bottom: 8px; color: var(--fg-mute); }
+  ul.plain strong { color: var(--fg); }
+
+  footer { padding: 40px 0 64px; border-top: 1px solid var(--line); color: var(--fg-mute); font-size: 14px; }
+  footer a { color: var(--fg-mute); }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <span class="eyebrow">Fork of Dokploy</span>
+  <h1>Dokploy <span class="accent">Bun</span></h1>
+  <p class="lede">
+    Self-hosted PaaS — deploy applications, databases and Docker Compose stacks on your own
+    servers, with Traefik routing, backups and monitoring. Same product as Dokploy,
+    running on Bun instead of Node.js, with every enterprise feature unlocked.
+  </p>
+
+  <pre class="install"><code>curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh</code></pre>
+  <p class="hint">Linux, amd64 or arm64. Needs Docker; the installer sets up Swarm and Traefik for you.</p>
+
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/SashaGoncharov19/dokploy-bun">GitHub</a>
+    <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/releases">Releases</a>
+    <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/PLAN.md">Migration notes</a>
+  </div>
+</header>
+
+<section class="wrap">
+  <h2>What changing the runtime actually did</h2>
+  <p class="sub">
+    Measured head-to-head against a build of the pre-migration commit — same host, same
+    PostgreSQL, byte-identical rendered output. Medians over repeated runs. The harness is
+    committed, so the numbers can be re-run rather than believed.
+  </p>
+
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr><th>Metric</th><th>Node</th><th>Bun</th><th>Change</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Shutdown (<code>docker stop</code> → exited)</td><td class="num">3019 ms</td><td class="num">318 ms</td><td class="win">9.5× faster</td></tr>
+      <tr><td>Memory, under load</td><td class="num">1315 MiB</td><td class="num">760 MiB</td><td class="win">−42%</td></tr>
+      <tr><td>Runtime image</td><td class="num">3.22 GB</td><td class="num">1.96 GB</td><td class="win">−39%</td></tr>
+      <tr><td>Cold boot, incl. 186 migrations</td><td class="num">4720 ms</td><td class="num">3411 ms</td><td class="win">1.4× faster</td></tr>
+      <tr><td>Dependency install (warm)</td><td class="num">21.9 s</td><td class="num">5.5 s</td><td class="win">4× faster</td></tr>
+      <tr><td>API service image</td><td class="num">1.25 GB</td><td class="num">234 MB</td><td class="win">5.3× smaller</td></tr>
+      <tr><td>SSR throughput</td><td class="num">780 rps</td><td class="num">745 rps</td><td class="flat">no change</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout">
+    <p>
+      <strong>Throughput did not improve.</strong> Both request benchmarks land inside noise, with
+      the Node baseline nominally ahead. The request path is bounded by Next.js and React
+      rendering, not by the JavaScript engine underneath — so swapping the engine does not move
+      it. Anyone promising a faster dashboard from a runtime swap is selling something.
+      What actually moved is startup, shutdown and memory.
+    </p>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>How it differs from upstream</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Every feature unlocked</h3>
+      <p>No licence key and nothing contacts a licensing API. Whitelabeling, SSO, SCIM, custom roles, audit logs and forward-auth all work out of the box.</p>
+    </div>
+    <div class="card">
+      <h3>Bun-native internals</h3>
+      <p><code>node-pty</code> → <code>Bun.Terminal</code>, <code>bcrypt</code> → <code>Bun.password</code>, <code>postgres.js</code> → <code>Bun.sql</code>. Existing password hashes keep working in both directions.</p>
+    </div>
+    <div class="card">
+      <h3>Its own registry</h3>
+      <p>Update checks point at this fork's images, so an update can never quietly replace your build with an upstream Node one.</p>
+    </div>
+    <div class="card">
+      <h3>Still merges upstream</h3>
+      <p>Divergence is kept deliberately narrow so Dokploy's fixes keep flowing in. The last upstream merge of 45 commits landed with zero conflicts.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Two channels</h2>
+  <p class="sub">Pick the one that matches how much churn you want.</p>
+  <ul class="plain">
+    <li><strong><code>:latest</code> — stable.</strong> Moves only on a tagged release. This is what the installer picks by default.</li>
+    <li><strong><code>:canary</code> — pre-release.</strong> Every merge, published immediately. Useful for trying fixes early; expect it to move under you.</li>
+  </ul>
+  <div class="callout">
+    <p>
+      Switching from stable to canary is safe. Going back is not always: database migrations
+      only run forward, so a canary that has applied newer migrations cannot be downgraded to
+      a stable image that does not know about them.
+    </p>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Upgrading an existing Dokploy</h2>
+  <p class="sub">One migration matters, and it is worth reading before you run it.</p>
+  <ul class="plain">
+    <li>
+      Unlocking the enterprise gates changes server visibility from <em>every organisation server</em>
+      to <em>only assigned servers</em>. Migration <code>0186</code> backfills the assignments first,
+      so a member-role user sees exactly what they saw before. Without it they would see nothing.
+    </li>
+    <li>
+      The two licence columns are deliberately left in place for now, so a rollback to an
+      upstream image stays possible.
+    </li>
+  </ul>
+</section>
+
+<footer class="wrap">
+  <p>
+    Built on <a href="https://github.com/Dokploy/dokploy">Dokploy</a> by Mauricio Siu and its
+    contributors — all of the product is theirs; this fork changes the runtime and removes the
+    licence gates. Code under the same licences as upstream, including the DSAL terms on
+    <code>/proprietary</code>.
+  </p>
+  <p>
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun">Source</a> ·
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">Every measurement, including the ones that failed</a>
+  </p>
+</footer>
+
+</body>
+</html>
