@@ -4,167 +4,266 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dokploy Bun — self-hosted PaaS on Bun</title>
-<meta name="description" content="Dokploy running on Bun instead of Node.js. Same product, every enterprise feature unlocked, 39% smaller image, 9.5× faster shutdown. Measured, not claimed." />
+<meta name="description" content="Dokploy running on Bun instead of Node.js. Every enterprise feature unlocked, 39% smaller image, 9.5× faster shutdown. Measured head-to-head, including what did not improve." />
 <meta property="og:title" content="Dokploy Bun" />
-<meta property="og:description" content="Self-hosted PaaS on Bun. Every feature unlocked, 39% smaller image, measured head-to-head against the Node build." />
+<meta property="og:description" content="Self-hosted PaaS on Bun. Every feature unlocked, 39% smaller image, 9.5× faster shutdown — measured, including what did not improve." />
 <meta property="og:type" content="website" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>" />
+<meta name="theme-color" content="#0a0c10" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23fbf0df'/><ellipse cx='36' cy='44' rx='6' ry='7'/><ellipse cx='64' cy='44' rx='6' ry='7'/><path d='M38 62 q12 12 24 0' stroke='%23000' stroke-width='5' fill='none' stroke-linecap='round'/></svg>" />
 <style>
   :root {
     --bg: #ffffff;
-    --bg-soft: #f6f8fa;
-    --fg: #1f2328;
-    --fg-mute: #59636e;
-    --line: #d1d9e0;
-    --accent: #bc8c3d;
-    --accent-soft: #fbf0df;
-    --pos: #1a7f37;
-    --code-bg: #f6f8fa;
-    --max: 900px;
+    --bg-lift: #fafbfc;
+    --bg-sunk: #f2f4f7;
+    --fg: #14171c;
+    --fg-soft: #454c56;
+    --fg-mute: #6b7480;
+    --line: #e2e6eb;
+    --line-soft: #eef1f4;
+    --cream: #b07d2a;
+    --cream-bg: #fdf6e8;
+    --pos: #17803d;
+    --glow: rgba(224, 168, 74, .16);
+    --shadow: 0 1px 2px rgba(20,23,28,.06), 0 8px 24px -12px rgba(20,23,28,.12);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0d1117;
-      --bg-soft: #151b23;
-      --fg: #e6edf3;
-      --fg-mute: #9198a1;
-      --line: #3d444d;
-      --accent: #f3d5a3;
-      --accent-soft: #1f1b13;
-      --pos: #3fb950;
-      --code-bg: #151b23;
+      --bg: #0a0c10;
+      --bg-lift: #11141a;
+      --bg-sunk: #0d1015;
+      --fg: #eef2f6;
+      --fg-soft: #b6bec9;
+      --fg-mute: #7d8794;
+      --line: #232830;
+      --line-soft: #1a1e25;
+      --cream: #f3d5a3;
+      --cream-bg: #17140e;
+      --pos: #4ac26b;
+      --glow: rgba(243, 213, 163, .10);
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px -20px rgba(0,0,0,.8);
     }
   }
+
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
-  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
-  a { color: var(--accent); }
-  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  a { color: inherit; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 28px; }
 
-  header { padding: 72px 0 48px; }
-  .eyebrow {
-    display: inline-block; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
-    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line);
-    padding: 4px 10px; border-radius: 999px; margin-bottom: 20px;
+  /* ---------- hero ---------- */
+  .hero { position: relative; overflow: hidden; padding: 96px 0 72px; }
+  .hero::before {
+    content: ""; position: absolute; inset: -40% 20% auto -10%; height: 620px;
+    background: radial-gradient(50% 50% at 50% 50%, var(--glow), transparent 70%);
+    pointer-events: none;
   }
-  h1 { font-size: clamp(38px, 7vw, 60px); line-height: 1.05; margin: 0 0 16px; letter-spacing: -.02em; }
-  h1 .accent { color: var(--accent); }
-  .lede { font-size: clamp(17px, 2.4vw, 20px); color: var(--fg-mute); margin: 0 0 32px; max-width: 62ch; }
+  .hero > * { position: relative; }
 
-  pre.install {
-    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
-    padding: 16px 18px; overflow-x: auto; margin: 0 0 12px; font-size: 14px;
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; letter-spacing: .04em; font-weight: 600;
+    color: var(--cream); background: var(--cream-bg);
+    border: 1px solid var(--line); padding: 5px 12px 5px 8px; border-radius: 999px;
   }
-  .hint { font-size: 14px; color: var(--fg-mute); margin: 0 0 32px; }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cream); }
 
-  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  h1 {
+    font-size: clamp(44px, 8.5vw, 78px); line-height: .98; letter-spacing: -.035em;
+    font-weight: 780; margin: 22px 0 0;
+  }
+  h1 .b {
+    background: linear-gradient(100deg, var(--cream), #e0a84a 60%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede {
+    font-size: clamp(17px, 2.2vw, 20.5px); line-height: 1.55; color: var(--fg-soft);
+    margin: 22px 0 0; max-width: 58ch;
+  }
+  .lede em { color: var(--fg); font-style: normal; font-weight: 600; }
+
+  /* ---------- terminal ---------- */
+  .term {
+    margin: 36px 0 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg-lift); box-shadow: var(--shadow); overflow: hidden; max-width: 720px;
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 7px; padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft); background: var(--bg-sunk);
+  }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+  .term-bar span { margin-left: 8px; font-size: 12px; color: var(--fg-mute); letter-spacing: .02em; }
+  .term pre { margin: 0; padding: 18px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; }
+  .term .p { color: var(--cream); user-select: none; }
+  .hint { font-size: 13.5px; color: var(--fg-mute); margin: 0 0 34px; }
+
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; }
   .btn {
-    display: inline-block; padding: 10px 18px; border-radius: 8px; text-decoration: none;
-    border: 1px solid var(--line); font-weight: 600; font-size: 15px; color: var(--fg);
+    display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+    padding: 11px 18px; border-radius: 9px; font-weight: 600; font-size: 14.5px;
+    border: 1px solid var(--line); background: var(--bg-lift); color: var(--fg);
+    transition: transform .12s ease, border-color .12s ease;
   }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #1f2328; }
+  .btn:hover { transform: translateY(-1px); border-color: var(--cream); }
+  .btn.primary { background: var(--cream); border-color: var(--cream); color: #14171c; }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #0a0c10; } }
 
-  section { padding: 44px 0; border-top: 1px solid var(--line); }
-  h2 { font-size: 26px; margin: 0 0 8px; letter-spacing: -.01em; }
-  .sub { color: var(--fg-mute); margin: 0 0 24px; max-width: 62ch; }
+  /* ---------- stat strip ---------- */
+  .strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: var(--bg-lift); box-shadow: var(--shadow); margin: 8px 0 0;
+  }
+  .stat { padding: 22px 20px; border-right: 1px solid var(--line-soft); }
+  .stat:last-child { border-right: 0; }
+  .stat b {
+    display: block; font-size: clamp(26px, 4vw, 34px); font-weight: 720;
+    letter-spacing: -.03em; color: var(--cream); line-height: 1.1;
+  }
+  .stat span { display: block; font-size: 13px; color: var(--fg-mute); margin-top: 5px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); }
-  th { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-mute); font-weight: 600; }
-  td.num { font-family: ui-monospace, monospace; white-space: nowrap; }
-  .win { color: var(--pos); font-weight: 600; }
-  .flat { color: var(--fg-mute); }
+  /* ---------- sections ---------- */
+  section { padding: 76px 0 0; }
+  .kicker {
+    font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--cream); margin: 0 0 10px;
+  }
+  h2 { font-size: clamp(26px, 3.6vw, 34px); letter-spacing: -.022em; margin: 0 0 10px; font-weight: 700; }
+  .sub { color: var(--fg-mute); margin: 0 0 26px; max-width: 62ch; font-size: 15.5px; }
+
+  .panel {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--bg-lift);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
   .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-mute); font-weight: 700; background: var(--bg-sunk); }
+  td.n { font-family: ui-monospace, monospace; white-space: nowrap; color: var(--fg-soft); font-size: 13.5px; }
+  td.d { font-family: ui-monospace, monospace; white-space: nowrap; font-weight: 700; font-size: 13.5px; }
+  .up { color: var(--pos); }
+  .flat { color: var(--fg-mute); font-weight: 600; }
 
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-  .card { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--bg-soft); }
-  .card h3 { margin: 0 0 6px; font-size: 16px; }
-  .card p { margin: 0; color: var(--fg-mute); font-size: 14.5px; }
-
-  .callout {
-    border-left: 3px solid var(--accent); background: var(--bg-soft);
-    padding: 16px 18px; border-radius: 0 8px 8px 0; margin: 20px 0 0;
+  .note {
+    margin: 20px 0 0; padding: 20px 22px; border-radius: 12px;
+    background: var(--cream-bg); border: 1px solid var(--line);
   }
-  .callout p { margin: 0; font-size: 15px; }
+  .note p { margin: 0; font-size: 15px; line-height: 1.65; color: var(--fg-soft); }
+  .note strong { color: var(--fg); }
 
-  ul.plain { padding-left: 20px; margin: 0; }
-  ul.plain li { margin-bottom: 8px; color: var(--fg-mute); }
-  ul.plain strong { color: var(--fg); }
+  .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); }
+  .card {
+    border: 1px solid var(--line); border-radius: 13px; padding: 20px; background: var(--bg-lift);
+    transition: border-color .14s ease, transform .14s ease;
+  }
+  .card:hover { border-color: var(--cream); transform: translateY(-2px); }
+  .card h3 { margin: 0 0 7px; font-size: 15.5px; font-weight: 660; }
+  .card p { margin: 0; color: var(--fg-mute); font-size: 14px; line-height: 1.6; }
+  .card code { font-size: 12.5px; color: var(--cream); }
 
-  footer { padding: 40px 0 64px; border-top: 1px solid var(--line); color: var(--fg-mute); font-size: 14px; }
-  footer a { color: var(--fg-mute); }
+  .rows { display: grid; gap: 12px; }
+  .row {
+    display: grid; grid-template-columns: 108px 1fr; gap: 18px; align-items: start;
+    padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-lift);
+  }
+  .row .tag {
+    font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700;
+    color: var(--cream); padding-top: 1px;
+  }
+  .row p { margin: 0; font-size: 14.5px; color: var(--fg-mute); line-height: 1.6; }
+  .row p strong { color: var(--fg); font-weight: 620; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 6px; } }
+
+  footer {
+    margin-top: 84px; padding: 34px 0 60px; border-top: 1px solid var(--line);
+    color: var(--fg-mute); font-size: 13.5px; line-height: 1.7;
+  }
+  footer a { color: var(--fg-soft); text-decoration: none; border-bottom: 1px solid var(--line); }
+  footer a:hover { color: var(--cream); border-color: var(--cream); }
+  footer p { margin: 0 0 10px; max-width: 70ch; }
 </style>
 </head>
 <body>
 
-<header class="wrap">
-  <span class="eyebrow">Fork of Dokploy</span>
-  <h1>Dokploy <span class="accent">Bun</span></h1>
+<div class="hero wrap">
+  <span class="badge"><i class="dot"></i> Fork of Dokploy · runs on Bun</span>
+  <h1>Dokploy <span class="b">Bun</span></h1>
   <p class="lede">
     Self-hosted PaaS — deploy applications, databases and Docker Compose stacks on your own
-    servers, with Traefik routing, backups and monitoring. Same product as Dokploy,
-    running on Bun instead of Node.js, with every enterprise feature unlocked.
+    servers, with Traefik routing, backups and monitoring. <em>Same product, every enterprise
+    feature unlocked, and a runtime that starts and stops out of your way.</em>
   </p>
 
-  <pre class="install"><code>curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh</code></pre>
-  <p class="hint">Linux, amd64 or arm64. Needs Docker; the installer sets up Swarm and Traefik for you.</p>
+  <div class="term">
+    <div class="term-bar"><i></i><i></i><i></i><span>install</span></div>
+<pre><code><span class="p">$</span> curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh</code></pre>
+  </div>
+  <p class="hint">Linux · amd64 and arm64 · needs Docker. The installer sets up Swarm and Traefik for you.</p>
 
   <div class="cta">
-    <a class="btn primary" href="https://github.com/SashaGoncharov19/dokploy-bun">GitHub</a>
+    <a class="btn primary" href="https://github.com/SashaGoncharov19/dokploy-bun">View on GitHub</a>
     <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/releases">Releases</a>
-    <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/PLAN.md">Migration notes</a>
+    <a class="btn" href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">The measurements</a>
   </div>
-</header>
+</div>
+
+<div class="wrap">
+  <div class="strip">
+    <div class="stat"><b>9.5×</b><span>faster shutdown</span></div>
+    <div class="stat"><b>−42%</b><span>memory under load</span></div>
+    <div class="stat"><b>−39%</b><span>image size</span></div>
+    <div class="stat"><b>4×</b><span>faster installs</span></div>
+  </div>
+</div>
 
 <section class="wrap">
+  <p class="kicker">Benchmarks</p>
   <h2>What changing the runtime actually did</h2>
   <p class="sub">
-    Measured head-to-head against a build of the pre-migration commit — same host, same
-    PostgreSQL, byte-identical rendered output. Medians over repeated runs. The harness is
-    committed, so the numbers can be re-run rather than believed.
+    Head-to-head against a build of the pre-migration commit. Same host, same PostgreSQL,
+    byte-identical rendered output. Medians over repeated runs, and the harness is committed
+    so the numbers can be re-run rather than believed.
   </p>
 
-  <div class="scroll">
-  <table>
-    <thead>
-      <tr><th>Metric</th><th>Node</th><th>Bun</th><th>Change</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>Shutdown (<code>docker stop</code> → exited)</td><td class="num">3019 ms</td><td class="num">318 ms</td><td class="win">9.5× faster</td></tr>
-      <tr><td>Memory, under load</td><td class="num">1315 MiB</td><td class="num">760 MiB</td><td class="win">−42%</td></tr>
-      <tr><td>Runtime image</td><td class="num">3.22 GB</td><td class="num">1.96 GB</td><td class="win">−39%</td></tr>
-      <tr><td>Cold boot, incl. 186 migrations</td><td class="num">4720 ms</td><td class="num">3411 ms</td><td class="win">1.4× faster</td></tr>
-      <tr><td>Dependency install (warm)</td><td class="num">21.9 s</td><td class="num">5.5 s</td><td class="win">4× faster</td></tr>
-      <tr><td>API service image</td><td class="num">1.25 GB</td><td class="num">234 MB</td><td class="win">5.3× smaller</td></tr>
-      <tr><td>SSR throughput</td><td class="num">780 rps</td><td class="num">745 rps</td><td class="flat">no change</td></tr>
-    </tbody>
-  </table>
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>Metric</th><th>Node</th><th>Bun</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Shutdown — <code>docker stop</code> to exited</td><td class="n">3019 ms</td><td class="n">318 ms</td><td class="d up">9.5× faster</td></tr>
+        <tr><td>Memory, under load</td><td class="n">1315 MiB</td><td class="n">760 MiB</td><td class="d up">−42%</td></tr>
+        <tr><td>Runtime image</td><td class="n">3.22 GB</td><td class="n">1.96 GB</td><td class="d up">−39%</td></tr>
+        <tr><td>Cold boot, incl. 186 migrations</td><td class="n">4720 ms</td><td class="n">3411 ms</td><td class="d up">1.4× faster</td></tr>
+        <tr><td>Dependency install, warm cache</td><td class="n">21.9 s</td><td class="n">5.5 s</td><td class="d up">4× faster</td></tr>
+        <tr><td>API service image</td><td class="n">1.25 GB</td><td class="n">234 MB</td><td class="d up">5.3× smaller</td></tr>
+        <tr><td>SSR throughput</td><td class="n">780 rps</td><td class="n">745 rps</td><td class="d flat">no change</td></tr>
+      </tbody>
+    </table>
   </div>
 
-  <div class="callout">
+  <div class="note">
     <p>
       <strong>Throughput did not improve.</strong> Both request benchmarks land inside noise, with
       the Node baseline nominally ahead. The request path is bounded by Next.js and React
-      rendering, not by the JavaScript engine underneath — so swapping the engine does not move
-      it. Anyone promising a faster dashboard from a runtime swap is selling something.
-      What actually moved is startup, shutdown and memory.
+      rendering, not by the engine underneath — so swapping the engine does not move it. Anyone
+      promising a faster dashboard from a runtime swap is selling something. What moved is
+      startup, shutdown and memory, and the shutdown figure is the one you feel: the service
+      runs <code>stop-first</code>, so every update waits on it.
     </p>
   </div>
 </section>
 
 <section class="wrap">
+  <p class="kicker">Differences</p>
   <h2>How it differs from upstream</h2>
-  <div class="grid">
+  <div class="cards">
     <div class="card">
       <h3>Every feature unlocked</h3>
-      <p>No licence key and nothing contacts a licensing API. Whitelabeling, SSO, SCIM, custom roles, audit logs and forward-auth all work out of the box.</p>
+      <p>No licence key, and nothing contacts a licensing API. Whitelabeling, SSO, SCIM, custom roles, audit logs and forward-auth all work out of the box.</p>
     </div>
     <div class="card">
       <h3>Bun-native internals</h3>
@@ -172,57 +271,65 @@
     </div>
     <div class="card">
       <h3>Its own registry</h3>
-      <p>Update checks point at this fork's images, so an update can never quietly replace your build with an upstream Node one.</p>
+      <p>Update checks point at this fork's images, so pressing Update can never quietly replace your build with an upstream Node one.</p>
     </div>
     <div class="card">
       <h3>Still merges upstream</h3>
-      <p>Divergence is kept deliberately narrow so Dokploy's fixes keep flowing in. The last upstream merge of 45 commits landed with zero conflicts.</p>
+      <p>Divergence is kept deliberately narrow so Dokploy's fixes keep flowing in. The last upstream merge — 45 commits — landed with zero conflicts.</p>
     </div>
   </div>
 </section>
 
 <section class="wrap">
-  <h2>Two channels</h2>
+  <p class="kicker">Channels</p>
+  <h2>Two ways to track it</h2>
   <p class="sub">Pick the one that matches how much churn you want.</p>
-  <ul class="plain">
-    <li><strong><code>:latest</code> — stable.</strong> Moves only on a tagged release. This is what the installer picks by default.</li>
-    <li><strong><code>:canary</code> — pre-release.</strong> Every merge, published immediately. Useful for trying fixes early; expect it to move under you.</li>
-  </ul>
-  <div class="callout">
+  <div class="rows">
+    <div class="row">
+      <span class="tag">:latest</span>
+      <p><strong>Stable.</strong> Moves only on a tagged release. This is what the installer picks by default, and what the update button offers.</p>
+    </div>
+    <div class="row">
+      <span class="tag">:canary</span>
+      <p><strong>Pre-release.</strong> Published on every merge. Useful for trying fixes early — expect it to move under you.</p>
+    </div>
+  </div>
+  <div class="note">
     <p>
-      Switching from stable to canary is safe. Going back is not always: database migrations
-      only run forward, so a canary that has applied newer migrations cannot be downgraded to
-      a stable image that does not know about them.
+      Switching stable → canary is safe. <strong>Going back is not.</strong> Database migrations
+      only run forward, so once canary has applied newer ones, a stable image that does not know
+      about them cannot start cleanly against that database.
     </p>
   </div>
 </section>
 
 <section class="wrap">
-  <h2>Upgrading an existing Dokploy</h2>
-  <p class="sub">One migration matters, and it is worth reading before you run it.</p>
-  <ul class="plain">
-    <li>
-      Unlocking the enterprise gates changes server visibility from <em>every organisation server</em>
-      to <em>only assigned servers</em>. Migration <code>0186</code> backfills the assignments first,
-      so a member-role user sees exactly what they saw before. Without it they would see nothing.
-    </li>
-    <li>
-      The two licence columns are deliberately left in place for now, so a rollback to an
-      upstream image stays possible.
-    </li>
-  </ul>
+  <p class="kicker">Upgrading</p>
+  <h2>Coming from an unlicensed Dokploy</h2>
+  <p class="sub">One migration deserves a read before you run it.</p>
+  <div class="rows">
+    <div class="row">
+      <span class="tag">0186</span>
+      <p>Unlocking the enterprise gates flips server visibility from <strong>every organisation server</strong> to <strong>only assigned servers</strong>. This migration backfills the assignments first, so a member-role user sees exactly what they saw before. Without it, they would open the dashboard to nothing.</p>
+    </div>
+    <div class="row">
+      <span class="tag">rollback</span>
+      <p>The two licence columns are deliberately still in place, so going back to an upstream image remains possible.</p>
+    </div>
+  </div>
 </section>
 
 <footer class="wrap">
   <p>
     Built on <a href="https://github.com/Dokploy/dokploy">Dokploy</a> by Mauricio Siu and its
-    contributors — all of the product is theirs; this fork changes the runtime and removes the
-    licence gates. Code under the same licences as upstream, including the DSAL terms on
+    contributors. All of the product is theirs — this fork changes the runtime and removes the
+    licence gates. Code under the same licences as upstream, including the DSAL terms covering
     <code>/proprietary</code>.
   </p>
   <p>
     <a href="https://github.com/SashaGoncharov19/dokploy-bun">Source</a> ·
-    <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">Every measurement, including the ones that failed</a>
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/SPIKE-RESULTS.md">Every measurement, including the ones that failed</a> ·
+    <a href="https://github.com/SashaGoncharov19/dokploy-bun/blob/canary/docs/bun-migration/PLAN.md">Migration plan</a>
   </p>
 </footer>
 
