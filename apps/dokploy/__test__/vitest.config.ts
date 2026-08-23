@@ -30,6 +30,7 @@ export default defineConfig({
 			"**/__test__/compose/**",
 			"**/__test__/git-provider/**",
 			"**/__test__/deploy/**",
+			"**/__test__/runtime/**",
 		],
 		pool: "forks",
 		setupFiles: [path.resolve(__dirname, "setup.ts")],

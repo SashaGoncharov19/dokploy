@@ -720,3 +720,161 @@ announce itself.
 (`analyze-logs.tsx`), which made the plugin look like dead weight. Removing it
 took the stylesheet from 192KB to 175KB - **17KB**, in exchange for breaking the
 formatting of the log-analysis output. Restored.
+
+---
+
+## Does Bun's memory grow over hours? — the soak
+
+The most persistent objection to Bun, and the one raised against this migration
+in [Dokploy/dokploy#3149](https://github.com/Dokploy/dokploy/issues/3149), is not
+about speed:
+
+> bun just increasing in memory within hours until it consumes all ram and then
+> crashes. Same exact code runs with node, stable, very low memory usage.
+
+Nothing else in this document answers that. The runtime benchmark above measures
+a freshly started server over **seconds**, and a lower number at minute one says
+nothing about hour eight. `scripts/soak-benchmark.ts` was written for this claim
+alone.
+
+**Not reproduced — for either runtime.** Across roughly twelve hours of observed
+running, neither image was OOM-killed, neither restarted, and neither approached
+the host's 8 GB. Bun's highest single sample was 787 MiB.
+
+### What was measured
+
+Both images run **concurrently** on one host so conditions are shared, under
+**rate-limited** load — 20 rps to `/api/health` and 5 rps to `/register` per
+target. Rate-limiting matters: under open throughput the faster runtime serves
+more requests, so a per-request leak would make it look leakier *for being
+faster*. `oha` runs with `--latency-correction`, so queueing delay is charged to
+the request that was due rather than hidden behind service time.
+
+Then the part that decides the question: **idle, then load again.** Memory
+rising under load is not a leak — allocator arenas, caches and a GC that has not
+run yet all do that. A leak is memory that does not come back when load stops,
+*and* that ratchets higher on the next load.
+
+Two runs, because the first one failed (below). They answer different halves:
+
+| | run 1 | run 2 |
+|---|---|---|
+| Soak | 8h requested, **7.45h usable** | 3h |
+| Settled data for the drift fit | 6.45h | 2h |
+| Idle / reload | invalidated | **1h / 40min, clean** |
+| Answers | does it grow over many hours? | is the growth a leak? |
+
+### The plateau, and how reproducible it is
+
+| | node | bun |
+|---|---|---|
+| Plateau, run 1 | 1061 MiB | **748 MiB** |
+| Plateau, run 2 | 1065 MiB | **744 MiB** |
+| Sample noise (σ) | 11.4 MiB | 11.6–14.6 MiB |
+
+Two independent runs of different lengths agree to within 4 MiB. The **319 MiB
+gap between the runtimes is 24σ** — Bun holds 30% less, sustained, and that is
+the finding this section exists to report.
+
+It also cross-checks against the short-run benchmark earlier in this document,
+which is worth more than either number alone: that harness measured node at 753
+MiB idle and 1315 loaded, bun at 626 and 760. Sustained moderate load lands
+between those bounds for both, from a completely different measurement path.
+
+### Drift, and why it is reported with an error bar
+
+| | drift under load | distinguishable from flat? |
+|---|---|---|
+| node, run 1 (6.45h settled) | +2.75 ± 0.58 MiB/h | yes, barely |
+| bun, run 1 (6.45h settled) | **+1.92 ± 0.64 MiB/h** | yes, barely |
+| node, run 2 (2h settled) | +0.83 ± 3.72 MiB/h | no |
+| bun, run 2 (2h settled) | +10.68 ± 4.32 MiB/h | unreliable — see below |
+
+**Run 1 is the authoritative drift measurement**; run 2's soak is too short to
+produce one, and its wide interval says so. Over 6.45 hours of settled data Bun
+drifts *less* than Node, and both are within a few MiB per hour.
+
+The harness now prints the standard error alongside the slope, and refuses to
+print a slope from fewer than twelve samples, because the bare number is
+genuinely misleading. The same data yielded +6.87, +10.37 and +14.33 MiB/h
+depending only on how much warm-up was excluded — while the error bar widened
+faster than the estimate did. A number that must be written `+1.92 ± 0.64`
+cannot pretend to a precision it does not have.
+
+Taking the least favourable reliable estimate — Bun at +1.92 + 0.64 = 2.56
+MiB/h, extrapolated linearly, which run 1 shows it is not — reaching 8 GB from
+748 MiB would take **121 days**. "Consumes all RAM within hours" is wrong by
+three orders of magnitude on this workload.
+
+### The leak test itself
+
+From run 2, the only run whose idle and reload phases are valid:
+
+| | soak plateau | idle floor | reclaimed | reload plateau | ratchet |
+|---|---|---|---|---|---|
+| node | 1065 MiB | 1064 MiB | +1.1 MiB (0.10σ) | 1066 MiB | +1.0 MiB (0.09σ) |
+| bun | 748 MiB | 742 MiB | +10.0 MiB (0.69σ) | 758 MiB | +5.3 MiB (0.36σ) |
+
+Every figure is below one standard deviation of the sample noise. Neither
+runtime returns much memory to the OS when load stops — normal, allocators
+usually keep their arenas — and neither ratchets when load resumes. That is a
+stable working set in both, not a leak in either.
+
+**What this cannot rule out:** an effect smaller than about 15 MiB per load
+cycle. One hour of idle and forty minutes of reload cannot resolve a ratchet
+that small, and a slow leak on that scale would be invisible here.
+
+### Latency did not degrade
+
+| ssr `/register` p99 | start | end | drift |
+|---|---|---|---|
+| node | 22.4 ms | 18.9 ms | −1.34 ms/h |
+| bun | 24.1 ms | 21.6 ms | +0.38 ms/h |
+
+Both improved slightly over three hours; success rate stayed at 100%. Node
+remains nominally ahead in absolute latency, consistent with the throughput
+finding earlier in this document — the request path is bounded by Next.js and
+React, not by the engine. That has now been checked over hours rather than
+seconds, and it does not change.
+
+### The first run failed, and how
+
+Recorded because the failure is more instructive than the result.
+
+Run 1 was launched on a laptop **on battery** with no power assertion. macOS
+entered Maintenance Sleep repeatedly from hour 7.5 while the wall clock kept
+advancing. The sampler's 60-second cadence stretched to gaps of 32, 17, 15, 53
+and 282 minutes; the idle phase collected 5 samples across 48 minutes and the
+reload phase 9 across five hours. Both were reported as medians.
+
+Latency degraded most instructively of all. Because `--latency-correction` was
+doing its job, it charged the entire sleep to queueing delay and reported an ssr
+p99 of 44 and then 141 **seconds** — symmetrically on both targets, because a
+sleeping host is not a property of a runtime. The flag was correct; the
+environment was not.
+
+Two fixes, and the second matters more:
+
+- `keepAwake()` takes a `caffeinate` assertion for the life of the process. It
+  does not survive a closed lid on battery, which is why it is not the real fix.
+- `gapReport()` marks any phase whose samples have a gap beyond three sampling
+  intervals as **contaminated**, prints the gaps, and records them in
+  `soak-results.json`. Replayed against the failed run it flags all three phases.
+
+A harness that prints a median computed across a window where nothing executed
+produces something that looks exactly like a measurement and is not one. That is
+the failure this whole benchmark exists to argue against, and it happened here
+first.
+
+A third design flaw surfaced the same way: the warm-up exclusion was a *fraction*
+of the soak, so an 8-hour run discarded 48 minutes and a 3-hour run 18, quietly
+making the two incomparable. Warm-up, idle and reload are all absolute durations
+now. How long an allocator takes to reach a working set, or to return memory, is
+a property of the allocator — not of how long you loaded it beforehand.
+
+### Scope
+
+Single host, one workload, Dokploy's own request mix, roughly twelve hours. This
+says nothing about Bun's memory behaviour in other applications, and it is not a
+throughput benchmark — the load was deliberately rate-limited and must not be
+quoted as one.
