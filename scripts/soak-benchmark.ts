@@ -478,6 +478,36 @@ const runLoad = async (until: () => boolean) => {
 	loading = false;
 };
 
+/**
+ * Refuse to start if another instance is already using these containers.
+ *
+ * Two instances share container names and host ports, and `createContainer`
+ * opens with `docker rm -f` - so a second run silently destroys a first one
+ * mid-measurement, or worse, adds its load to the first one's targets and makes
+ * every number wrong without anything looking wrong. An aborted syntax check
+ * once left an instance alive for nine hours; it happened to hang before the
+ * load phase, which is the only reason a five-hour run survived it.
+ */
+const assertNoConcurrentRun = async () => {
+	const running = await sh([
+		"docker",
+		"ps",
+		"--format",
+		"{{.Names}}",
+		"--filter",
+		"name=dokbench-",
+	]);
+	if (running.trim()) {
+		throw new Error(
+			`another soak run appears to be active - these containers are up:\n  ${running
+				.split("\n")
+				.join("\n  ")}\nStop it, or remove them, before starting a new run.`,
+		);
+	}
+};
+
+await assertNoConcurrentRun();
+
 const awake = keepAwake();
 if (!awake && process.platform === "darwin") {
 	console.log("  !! caffeinate unavailable - the host may sleep mid-run");
