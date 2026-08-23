@@ -53,9 +53,17 @@ const PG = "dokbench-pg";
 const NET = "dokbench";
 
 const HOURS = Number(process.env.SOAK_HOURS ?? "8");
-/** Fraction of the soak length spent idle, and then loaded a second time. */
-const IDLE_FRACTION = 0.12;
-const RECOVER_FRACTION = 0.08;
+/**
+ * Idle and reload are absolute minutes, not fractions of the soak.
+ *
+ * They were fractions at first, which is wrong on reflection: how long an
+ * allocator needs to return memory is a property of the allocator, not of how
+ * long you loaded it beforehand. Tying them to soak length also meant a short
+ * soak produced too few samples for either phase to be worth reporting, which
+ * is how the first run ended up with an idle floor computed from five samples.
+ */
+const IDLE_MINUTES = Number(process.env.SOAK_IDLE_MINUTES ?? "60");
+const RECOVER_MINUTES = Number(process.env.SOAK_RELOAD_MINUTES ?? "30");
 /** One oha invocation per chunk, so load failures surface and latency is a series. */
 const CHUNK_MINUTES = Number(process.env.SOAK_CHUNK_MINUTES ?? "10");
 const SAMPLE_SECONDS = 60;
@@ -90,6 +98,32 @@ const STREAMS = [
 	{ key: "health", path: "/api/health", qps: 20, concurrency: 8 },
 	{ key: "ssr", path: "/register", qps: 5, concurrency: 4 },
 ];
+
+/**
+ * Keep the host awake for the length of the run.
+ *
+ * The first eight-hour attempt at this benchmark was run on a laptop on battery
+ * and macOS put it into Maintenance Sleep repeatedly from hour 7.5 onward. Wall
+ * clock kept advancing while nothing executed, so the sampler's 60s cadence
+ * stretched to gaps of 15, 32 and 282 minutes, and oha's latency correction -
+ * correctly - attributed the whole sleep to queueing delay and reported a p99 of
+ * 141 seconds. None of that was a property of either runtime.
+ *
+ * `caffeinate -w <pid>` holds the assertion until this process exits, including
+ * if it is killed, so there is no assertion to leak. Not available off Darwin,
+ * where this is a no-op and the guard below is the only protection.
+ */
+const keepAwake = () => {
+	if (process.platform !== "darwin") return null;
+	try {
+		return Bun.spawn(["caffeinate", "-dimsu", "-w", String(process.pid)], {
+			stdout: "ignore",
+			stderr: "ignore",
+		});
+	} catch {
+		return null;
+	}
+};
 
 const sh = async (cmd: string[]) => {
 	const p = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe" });
@@ -288,6 +322,32 @@ interface ChunkResult {
 	successRate: number;
 }
 
+/**
+ * A phase is only reportable if the sampler actually ran on cadence throughout.
+ *
+ * This is the guard that matters more than the power assertion: caffeinate can
+ * fail, a VM can be paused, a container host can be throttled. Reporting a
+ * median computed across a gap where nothing executed produces a number that
+ * looks exactly like a measurement and is not one - the precise failure this
+ * whole exercise exists to argue against.
+ */
+const MAX_GAP_FACTOR = 3;
+
+const gapReport = (rows: Sample[]) => {
+	const gaps: Array<{ from: number; to: number; minutes: number }> = [];
+	for (let i = 1; i < rows.length; i++) {
+		const minutes = (rows[i]!.elapsedHours - rows[i - 1]!.elapsedHours) * 60;
+		if (minutes > (SAMPLE_SECONDS / 60) * MAX_GAP_FACTOR) {
+			gaps.push({
+				from: rows[i - 1]!.elapsedHours,
+				to: rows[i]!.elapsedHours,
+				minutes,
+			});
+		}
+	}
+	return gaps;
+};
+
 const samples: Sample[] = [];
 const chunks: ChunkResult[] = [];
 const sampleFile = "soak-samples.jsonl";
@@ -401,6 +461,11 @@ const runLoad = async (until: () => boolean) => {
 	loading = false;
 };
 
+const awake = keepAwake();
+if (!awake && process.platform === "darwin") {
+	console.log("  !! caffeinate unavailable - the host may sleep mid-run");
+}
+
 await setupInfra();
 
 const results: Record<string, Record<string, unknown>> = {};
@@ -420,12 +485,12 @@ try {
 	}
 
 	const soakMs = HOURS * 3_600_000;
-	const idleMs = soakMs * IDLE_FRACTION;
-	const recoverMs = soakMs * RECOVER_FRACTION;
+	const idleMs = IDLE_MINUTES * 60_000;
+	const recoverMs = RECOVER_MINUTES * 60_000;
 
 	console.log(
-		`\n=== soak: ${HOURS}h load, ${(idleMs / 3.6e6).toFixed(2)}h idle, ` +
-			`${(recoverMs / 3.6e6).toFixed(2)}h reload ===`,
+		`\n=== soak: ${HOURS}h load, ${IDLE_MINUTES}min idle, ` +
+			`${RECOVER_MINUTES}min reload ===`,
 	);
 	console.log(
 		`  ${STREAMS.map((s) => `${s.key} ${s.qps}rps`).join(", ")} per target, ` +
@@ -502,7 +567,21 @@ try {
 				)
 			: Number.NaN;
 
+		// A gap means the host stalled. Every statistic below spans it, so the
+		// phase is reported as unusable rather than as a number.
+		const stalls = Object.fromEntries(
+			(["baseline", "soak", "idle", "recover"] as const).map((ph) => [
+				ph,
+				gapReport(mine.filter((x) => x.phase === ph)),
+			]),
+		);
+		const contaminated = Object.entries(stalls)
+			.filter(([, g]) => g.length > 0)
+			.map(([ph]) => ph);
+
 		const r = results[t.name]!;
+		r.stalls = stalls;
+		r.contaminatedPhases = contaminated;
 		r.soakSlopeMibPerHour = Number(soakSlope.toFixed(2));
 		r.soakPeakRss = Number(soakPeak.toFixed(1));
 		r.soakPlateauRss = Number(soakPlateau.toFixed(1));
@@ -553,6 +632,34 @@ try {
 		);
 	}
 
+	const anyContaminated = TARGETS.some(
+		(t) => (results[t.name]!.contaminatedPhases as string[]).length > 0,
+	);
+	if (anyContaminated) {
+		console.log(
+			"\n  !! HOST STALLED - this run is not reportable as it stands.",
+		);
+		for (const t of TARGETS) {
+			const stalls = results[t.name]!.stalls as Record<
+				string,
+				Array<{ from: number; to: number; minutes: number }>
+			>;
+			for (const [ph, gaps] of Object.entries(stalls)) {
+				for (const g of gaps) {
+					console.log(
+						`     ${t.name} ${ph}: ${g.minutes.toFixed(1)} min with no samples ` +
+							`(${g.from.toFixed(2)}h -> ${g.to.toFixed(2)}h)`,
+					);
+				}
+			}
+		}
+		console.log(
+			"     Statistics for those phases span a window where nothing executed.\n" +
+				"     Latency in particular is meaningless: with --latency-correction the\n" +
+				"     stall is charged to queueing delay. Re-run the affected phases.",
+		);
+	}
+
 	console.log(
 		"\n  Reading this: drift is only a leak if the idle floor stays high and the\n" +
 			"  reload plateau ratchets above the first one. Growth that is reclaimed when\n" +
@@ -565,6 +672,8 @@ try {
 			{
 				config: {
 					hours: HOURS,
+					idleMinutes: IDLE_MINUTES,
+					reloadMinutes: RECOVER_MINUTES,
 					streams: STREAMS,
 					chunkMinutes: CHUNK_MINUTES,
 					sampleSeconds: SAMPLE_SECONDS,
@@ -582,4 +691,5 @@ try {
 } finally {
 	await sink.end();
 	await teardown();
+	awake?.kill();
 }
