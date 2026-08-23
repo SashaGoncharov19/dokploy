@@ -116,10 +116,29 @@ built-in APIs — `node-pty` → `Bun.Terminal`, `bcrypt` → `Bun.password` —
 password hashes keep working in both directions, so upgrading and rolling back are both
 safe.
 
-These are single-host benchmarks of a freshly started server, not observations of a
-production deployment under sustained real traffic. The harness is committed as
-[`scripts/runtime-benchmark.ts`](scripts/runtime-benchmark.ts) so the numbers can be
-re-run rather than believed.
+### Does it leak?
+
+The usual objection to Bun is that memory grows over hours until the process dies. Held
+under sustained load and then left idle and loaded again — roughly twelve hours across
+two runs — **it does not, and neither does Node**. No OOM, no restart, Bun's highest
+single sample 787 MiB on an 8 GB host.
+
+| | node | bun |
+|---|---|---|
+| Memory, sustained plateau | 1063 MiB | **746 MiB** |
+| Drift under load, over 6.45h | +2.75 ± 0.58 MiB/h | **+1.92 ± 0.64 MiB/h** |
+| Ratchet after idle and reload | +1.0 MiB (0.09σ) | +5.3 MiB (0.36σ) |
+
+The plateau reproduced to within 4 MiB across two independent runs of different
+lengths, and the 319 MiB gap is 24σ. Both ratchets are inside the sample noise, which
+is what distinguishes a stable working set from a leak.
+
+These are single-host benchmarks under synthetic load, not observations of a production
+deployment under sustained real traffic. Both harnesses are committed —
+[`scripts/runtime-benchmark.ts`](scripts/runtime-benchmark.ts) and
+[`scripts/soak-benchmark.ts`](scripts/soak-benchmark.ts) — so the numbers can be re-run
+rather than believed, and the first soak attempt failed in a way worth reading about in
+[SPIKE-RESULTS.md](docs/bun-migration/SPIKE-RESULTS.md).
 
 **The migration is documented in full**, including what broke and how:
 [docs/bun-migration/](docs/bun-migration/PLAN.md).

@@ -62,6 +62,8 @@ const HOURS = Number(process.env.SOAK_HOURS ?? "8");
  * soak produced too few samples for either phase to be worth reporting, which
  * is how the first run ended up with an idle floor computed from five samples.
  */
+/** Excluded from the drift fit. The climb to a working set takes about an hour. */
+const WARMUP_MINUTES = Number(process.env.SOAK_WARMUP_MINUTES ?? "60");
 const IDLE_MINUTES = Number(process.env.SOAK_IDLE_MINUTES ?? "60");
 const RECOVER_MINUTES = Number(process.env.SOAK_RELOAD_MINUTES ?? "30");
 /** One oha invocation per chunk, so load failures surface and latency is a series. */
@@ -151,9 +153,20 @@ const median = (xs: number[]) => {
  * whole exercise is meant to correct.
  */
 const MIN_SLOPE_POINTS = 12;
+
+/**
+ * Slope with its standard error, because the slope alone is not usable.
+ *
+ * Measured across two runs the drift estimate moved from +1.49 to +6.87 MiB/h
+ * for the same image on the same host, and within one run it moved from +6.87 to
+ * +14.33 depending only on how much warm-up was excluded - while its own error
+ * bar widened faster than the estimate did. A bare number invites being quoted
+ * as a finding; one that must be printed as `+6.87 +/- 2.84` cannot hide that it
+ * is barely distinguishable from flat.
+ */
 const slope = (pts: Array<{ x: number; y: number }>) => {
 	const n = pts.length;
-	if (n < MIN_SLOPE_POINTS) return Number.NaN;
+	if (n < MIN_SLOPE_POINTS) return { b: Number.NaN, se: Number.NaN };
 	const mx = pts.reduce((a, p) => a + p.x, 0) / n;
 	const my = pts.reduce((a, p) => a + p.y, 0) / n;
 	let num = 0;
@@ -162,7 +175,11 @@ const slope = (pts: Array<{ x: number; y: number }>) => {
 		num += (p.x - mx) * (p.y - my);
 		den += (p.x - mx) ** 2;
 	}
-	return den === 0 ? Number.NaN : num / den;
+	if (den === 0) return { b: Number.NaN, se: Number.NaN };
+	const b = num / den;
+	const a0 = my - b * mx;
+	const rss = pts.reduce((acc, p) => acc + (p.y - (a0 + b * p.x)) ** 2, 0);
+	return { b, se: Math.sqrt(rss / (n - 2) / den) };
 };
 
 const waitForHealth = async (port: number, t0: number, timeoutMs = 300_000) => {
@@ -543,8 +560,13 @@ try {
 		const idle = mine.filter((s) => s.phase === "idle");
 		const recover = mine.filter((s) => s.phase === "recover");
 
-		// Skip the first 10% of the soak: the climb to a working set is not drift.
-		const settled = soak.slice(Math.floor(soak.length * 0.1));
+		// Skip a fixed WARMUP_MINUTES: the climb to a working set is not drift.
+		// This was a fraction of the soak, which quietly made runs of different
+		// lengths incomparable - an 8h soak excluded 48 minutes and a 3h soak 18,
+		// so the two were not measuring the same quantity.
+		const settled = soak.filter(
+			(s) => s.elapsedHours - soak[0]!.elapsedHours >= WARMUP_MINUTES / 60,
+		);
 		const soakSlope = slope(
 			settled.map((s) => ({ x: s.elapsedHours, y: s.rssMib })),
 		);
@@ -582,7 +604,10 @@ try {
 		const r = results[t.name]!;
 		r.stalls = stalls;
 		r.contaminatedPhases = contaminated;
-		r.soakSlopeMibPerHour = Number(soakSlope.toFixed(2));
+		r.soakSlopeMibPerHour = Number(soakSlope.b.toFixed(2));
+		r.soakSlopeStdErr = Number(soakSlope.se.toFixed(2));
+		r.soakDriftDistinguishableFromFlat =
+			Math.abs(soakSlope.b) > 2 * soakSlope.se;
 		r.soakPeakRss = Number(soakPeak.toFixed(1));
 		r.soakPlateauRss = Number(soakPlateau.toFixed(1));
 		r.idleFloorRss = Number(idleFloor.toFixed(1));
@@ -606,9 +631,9 @@ try {
 		if (ssr.length >= MIN_SLOPE_POINTS) {
 			r.ssrP99First = Number(ssr[0]!.p99.toFixed(1));
 			r.ssrP99Last = Number(ssr.at(-1)!.p99.toFixed(1));
-			r.ssrP99SlopeMsPerHour = Number(
-				slope(ssr.map((c) => ({ x: c.elapsedHours, y: c.p99 }))).toFixed(2),
-			);
+			const p99 = slope(ssr.map((c) => ({ x: c.elapsedHours, y: c.p99 })));
+			r.ssrP99SlopeMsPerHour = Number(p99.b.toFixed(2));
+			r.ssrP99SlopeStdErr = Number(p99.se.toFixed(2));
 		}
 
 		console.log(
@@ -617,9 +642,13 @@ try {
 				`    soak plateau        ${(r.soakPlateauRss as number).toFixed(1)} MiB\n` +
 				`    soak peak           ${(r.soakPeakRss as number).toFixed(1)} MiB\n` +
 				`    drift under load    ${
-					Number.isNaN(soakSlope)
+					Number.isNaN(soakSlope.b)
 						? `not reported (${settled.length} samples, needs ${MIN_SLOPE_POINTS})`
-						: `${soakSlope >= 0 ? "+" : ""}${(r.soakSlopeMibPerHour as number).toFixed(2)} MiB/h`
+						: `${soakSlope.b >= 0 ? "+" : ""}${soakSlope.b.toFixed(2)} +/- ${(2 * soakSlope.se).toFixed(2)} MiB/h${
+								Math.abs(soakSlope.b) > 2 * soakSlope.se
+									? ""
+									: "  (not distinguishable from flat)"
+							}`
 				}\n` +
 				`    idle floor          ${(r.idleFloorRss as number).toFixed(1)} MiB  (reclaimed ${(r.reclaimedMib as number).toFixed(1)} MiB)\n` +
 				`    plateau on reload   ${(r.recoverPlateauRss as number).toFixed(1)} MiB  (ratchet ${(r.ratchetMib as number) >= 0 ? "+" : ""}${(r.ratchetMib as number).toFixed(1)} MiB)\n` +
