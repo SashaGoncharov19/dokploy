@@ -31,14 +31,14 @@ done < "$REPO_ROOT/.worktreeinclude" | while read -r src; do
 done
 
 cd "$WORKTREE_PATH"
-pnpm install --prefer-offline >&2
+bun install >&2
 
-FREE_PORT=$(node "$REPO_ROOT/scripts/find-free-port.mjs")
+FREE_PORT=$(bun "$REPO_ROOT/scripts/find-free-port.mjs")
 sed -i.bak "s/^PORT=.*/PORT=$FREE_PORT/" apps/dokploy/.env
 sed -i.bak -E "s#^(BETTER_AUTH_URL=https?://[^:/]+):[0-9]+#\1:$FREE_PORT#" apps/dokploy/.env
 rm -f apps/dokploy/.env.bak
 
-pnpm --filter=dokploy run dev > "$WORKTREE_PATH/dev-server.log" 2>&1 &
+bun run --filter dokploy dev > "$WORKTREE_PATH/dev-server.log" 2>&1 &
 echo $! > "$WORKTREE_PATH/dev-server.pid"
 
 BASE_URL="http://localhost:$FREE_PORT"

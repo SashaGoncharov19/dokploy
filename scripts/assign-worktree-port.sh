@@ -13,7 +13,7 @@ if [ ! -f "$ENV_FILE" ]; then
 	exit 0
 fi
 
-FREE_PORT=$(node "$CLAUDE_PROJECT_DIR/scripts/find-free-port.mjs")
+FREE_PORT=$(bun "$CLAUDE_PROJECT_DIR/scripts/find-free-port.mjs")
 
 sed -i.bak "s/^PORT=.*/PORT=$FREE_PORT/" "$ENV_FILE"
 sed -i.bak -E "s#^(BETTER_AUTH_URL=https?://[^:/]+):[0-9]+#\1:$FREE_PORT#" "$ENV_FILE"

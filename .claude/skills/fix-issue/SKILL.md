@@ -11,7 +11,7 @@ The issue number is passed as $1.
 No instance is running yet — start your own, isolated to this worktree:
 
 1. Check `apps/dokploy/.env` for `PORT` (assigned per-worktree already).
-2. If nothing is listening on that port, start it: `pnpm dokploy:dev` in the
+2. If nothing is listening on that port, start it: `bun run dokploy:dev` in the
    background, then poll `curl -s -o /dev/null -w '%{http_code}' http://localhost:$PORT`
    until it answers (usually ~10-15s).
 3. Use `http://localhost:$PORT` as the base URL for Playwright navigation.
@@ -48,7 +48,7 @@ click through ten screens to create a project the API can create in one call.
    comment on the issue explaining what you tried and STOP.
    Do not implement anything.
 3. Implement the fix. Keep the change minimal and scoped to the issue.
-4. Run `pnpm test`, then re-run the same reproduction from step 2.
+4. Run `bun run test`, then re-run the same reproduction from step 2.
 5. Only if both pass: commit and run `gh pr create`. The PR description must
    include the before/after reproduction steps and reference the issue.
 

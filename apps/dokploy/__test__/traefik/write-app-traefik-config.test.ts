@@ -1,36 +1,49 @@
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+	spyOn,
+} from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { writeAppTraefikConfig } from "@dokploy/server/utils/traefik/application";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as execProcess from "@dokploy/server/utils/process/execAsync";
 
-const mocks = vi.hoisted(() => ({
-	execAsyncRemote: vi.fn(),
+// Snapshot before mocking: `mock.module` is process-global and has no
+// `importActual`, so the restore at the bottom puts the original back.
+const actualExecProcess = { ...execProcess };
+
+const execAsyncRemoteMock = jest.fn();
+
+mock.module("@dokploy/server/utils/process/execAsync", () => ({
+	...actualExecProcess,
+	execAsyncRemote: execAsyncRemoteMock,
 }));
 
-vi.mock("@dokploy/server/utils/process/execAsync", async (importOriginal) => {
-	const actual =
-		await importOriginal<typeof import("@dokploy/server/utils/process/execAsync")>();
-	return {
-		...actual,
-		execAsyncRemote: mocks.execAsyncRemote,
-	};
-});
+const { writeAppTraefikConfig } = await import(
+	"@dokploy/server/utils/traefik/application"
+);
 
 describe("writeAppTraefikConfig", () => {
 	let cwd: string;
 	let dynamicPath: string;
+	let cwdSpy: ReturnType<typeof spyOn>;
 
 	beforeEach(() => {
+		jest.clearAllMocks();
 		cwd = fs.mkdtempSync(path.join(os.tmpdir(), "dokploy-traefik-"));
 		dynamicPath = path.join(cwd, ".docker", "traefik", "dynamic");
 		fs.mkdirSync(dynamicPath, { recursive: true });
-		vi.spyOn(process, "cwd").mockReturnValue(cwd);
-		vi.clearAllMocks();
+		cwdSpy = spyOn(process, "cwd").mockReturnValue(cwd);
 	});
 
 	afterEach(() => {
-		vi.restoreAllMocks();
+		cwdSpy.mockRestore();
 		fs.rmSync(cwd, { recursive: true, force: true });
 	});
 
@@ -58,7 +71,12 @@ describe("writeAppTraefikConfig", () => {
 		await writeAppTraefikConfig(
 			{
 				http: {
-					routers: { [`${appName}-router-1`]: { rule: "Host(`x`)" } },
+					routers: {
+						[`${appName}-router-1`]: {
+							rule: "Host(`x`)",
+							service: `${appName}-service-1`,
+						},
+					},
 					services: {},
 				},
 			},
@@ -69,7 +87,7 @@ describe("writeAppTraefikConfig", () => {
 	});
 
 	it("removes the remote file instead of writing empty routers/services", async () => {
-		mocks.execAsyncRemote.mockResolvedValue({ stdout: "", stderr: "" });
+		execAsyncRemoteMock.mockResolvedValue({ stdout: "", stderr: "" });
 
 		await writeAppTraefikConfig(
 			{ http: { routers: {}, services: {} } },
@@ -77,19 +95,24 @@ describe("writeAppTraefikConfig", () => {
 			"server-id",
 		);
 
-		expect(mocks.execAsyncRemote).toHaveBeenCalledOnce();
-		const [, command] = mocks.execAsyncRemote.mock.calls[0];
+		expect(execAsyncRemoteMock).toHaveBeenCalledTimes(1);
+		const [, command] = execAsyncRemoteMock.mock.calls[0] ?? [];
 		expect(command).toMatch(/^rm -f /);
 		expect(command).toContain("no-domain-app.yml");
 	});
 
 	it("writes the remote file when routers/services are present", async () => {
-		mocks.execAsyncRemote.mockResolvedValue({ stdout: "", stderr: "" });
+		execAsyncRemoteMock.mockResolvedValue({ stdout: "", stderr: "" });
 
 		await writeAppTraefikConfig(
 			{
 				http: {
-					routers: { "with-domain-app-router-1": { rule: "Host(`x`)" } },
+					routers: {
+						"with-domain-app-router-1": {
+							rule: "Host(`x`)",
+							service: "with-domain-app-service-1",
+						},
+					},
 					services: {},
 				},
 			},
@@ -97,8 +120,15 @@ describe("writeAppTraefikConfig", () => {
 			"server-id",
 		);
 
-		expect(mocks.execAsyncRemote).toHaveBeenCalledOnce();
-		const [, command] = mocks.execAsyncRemote.mock.calls[0];
+		expect(execAsyncRemoteMock).toHaveBeenCalledTimes(1);
+		const [, command] = execAsyncRemoteMock.mock.calls[0] ?? [];
 		expect(command).toMatch(/^echo /);
 	});
+});
+
+afterAll(() => {
+	mock.module(
+		"@dokploy/server/utils/process/execAsync",
+		() => actualExecProcess,
+	);
 });

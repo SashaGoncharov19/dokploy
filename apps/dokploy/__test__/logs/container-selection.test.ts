@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { resolveContainerSelection } from "@/components/dashboard/docker/logs/utils";
 
 const containers = [

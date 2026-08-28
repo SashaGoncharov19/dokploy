@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 
 const mockMemberData = (role: string) => ({
 	id: "member-1",
@@ -26,23 +26,19 @@ const mockMemberData = (role: string) => ({
 let memberToReturn = mockMemberData("deployer");
 let rolesToReturn: { permission: string }[] = [];
 
-vi.mock("@dokploy/server/db", () => ({
+mock.module("@dokploy/server/db", () => ({
 	db: {
 		query: {
 			member: {
-				findFirst: vi.fn(() => Promise.resolve(memberToReturn)),
-				findMany: vi.fn(() => Promise.resolve([])),
+				findFirst: jest.fn(() => Promise.resolve(memberToReturn)),
+				findMany: jest.fn(() => Promise.resolve([])),
 			},
 			organizationRole: {
-				findFirst: vi.fn(),
-				findMany: vi.fn(() => Promise.resolve(rolesToReturn)),
+				findFirst: jest.fn(),
+				findMany: jest.fn(() => Promise.resolve(rolesToReturn)),
 			},
 		},
 	},
-}));
-
-vi.mock("@dokploy/server/services/proprietary/license-key", () => ({
-	hasValidLicense: vi.fn(() => Promise.resolve(true)),
 }));
 
 const { checkPermission, resolvePermissions } = await import(
@@ -59,7 +55,7 @@ const withPermissions = (permissions: Record<string, string[]>) => {
 };
 
 beforeEach(() => {
-	vi.clearAllMocks();
+	jest.clearAllMocks();
 	memberToReturn = mockMemberData("deployer");
 	rolesToReturn = [];
 });

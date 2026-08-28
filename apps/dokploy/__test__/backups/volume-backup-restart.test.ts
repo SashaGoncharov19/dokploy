@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { createRestartSafeBackupCommand } from "@dokploy/server/utils/volume-backups/backup";
-import { describe, expect, it } from "vitest";
 
 const runCommand = (command: string) =>
 	spawnSync("bash", ["-c", command], {
