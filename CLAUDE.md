@@ -237,6 +237,25 @@ Read PLAN §12.3 before changing any of these three.
 
 ---
 
+## Releases
+
+Two channels, and which branch you are on decides which one you are cutting:
+
+| Channel | Branch | Tag | Image |
+|---|---|---|---|
+| Stable | `main` | `v0.30.2-bun.1` | `:latest`, `:v0.30.2-bun.1` |
+| Pre-release | `canary` | `v0.30.2-bun.1-canary.1` | `:canary` |
+
+`main` is **fast-forwarded** to the released commit on `canary`, never merged. Verify
+`main` is an ancestor of `canary` before moving it; if it is not, a hotfix landed on
+`main` and was never merged back, and forcing the move would drop it.
+
+Note what the `-bun.N` suffix does to ordering: it occupies semver's prerelease field,
+so `v0.30.2-bun.1-canary.1` sorts **above** `v0.30.2-bun.1`, not below. An `-rc.N`
+scheme layered on top would sort the wrong way round for the same reason. The installer
+does not rely on semver ordering — it reads GitHub's `releases/latest`, which follows
+the "latest" flag — but anything that does sort tags will get this wrong.
+
 ## Conventions
 
 - Biome, tabs, double quotes. Run `bun run check` before finishing.
@@ -251,6 +270,9 @@ Read PLAN §12.3 before changing any of these three.
 
 - Don't touch `apps/monitoring` (Go).
 - Don't add a build step to `packages/server`.
-- Don't commit `pnpm-lock.yaml`, `pnpm-workspace.yaml`, or `.nvmrc` — they are being deleted.
+- Don't reintroduce `pnpm-lock.yaml`, `pnpm-workspace.yaml`, or `.nvmrc`. All three are
+  gone; the last one to go was a stray `pnpm-lock.yaml` under
+  `packages/server/src/emails`, which survived the migration because that directory
+  installs on its own and nothing in CI touches it.
 - Don't drop the `enableEnterpriseFeatures` / `isValidEnterpriseLicense` columns yet;
   keep them one release past the gate removal (PLAN §16).

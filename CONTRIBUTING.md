@@ -1,196 +1,245 @@
 # Contributing
 
-Hey, thanks for your interest in contributing to Dokploy! We appreciate your help and taking your time to contribute.
+Thanks for taking the time. This document covers contributing to **this fork** —
+Dokploy running on Bun. If you have never worked in the repository before, read
+[Where to send what](#where-to-send-what) first; it will save you from opening a pull
+request in the wrong place.
 
-Before you start, please first discuss the feature/bug you want to add with the owners and community via github issues.
-
-We have a few guidelines to follow when contributing to this project:
-
-- [Commit Convention](#commit-convention)
+- [Where to send what](#where-to-send-what)
 - [Setup](#setup)
 - [Development](#development)
-- [Build](#build)
-- [Pull Request](#pull-request)
-- [Important Considerations](#important-considerations-for-pull-requests)
+- [Tests](#tests)
+- [Fork discipline](#fork-discipline)
+- [Commits and branches](#commits-and-branches)
+- [Pull requests](#pull-requests)
 
-## Commit Convention
+## Where to send what
 
-Before you create a Pull Request, please make sure your commit message follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
+This repository is a runtime fork. The product is
+[Dokploy](https://github.com/Dokploy/dokploy), built by Mauricio Siu and its
+contributors; we change what it runs on, not what it does.
 
-### Commit Message Format
+| Your change | Where it belongs |
+|---|---|
+| Bun runtime, build, images, CI, benchmarks | **here** |
+| A bug that only reproduces on Bun | **here** |
+| A new product feature, or a bug that also happens on upstream's build | [upstream](https://github.com/Dokploy/dokploy) — we merge their releases |
+| A one-click app template | [Dokploy/templates](https://github.com/Dokploy/templates) |
+| Product documentation | [Dokploy/website](https://github.com/Dokploy/website) |
+
+Sending a product fix upstream gets it to far more people than sending it here, and it
+reaches us anyway on the next sync. If you are unsure which side a bug is on, open an
+issue here with the reproduction and we will work it out.
+
+For anything non-trivial, open an issue before writing code.
+
+## Setup
+
+You need [Bun](https://bun.sh) 1.3.14 or newer and [Docker](/GUIDES.md#docker).
+**Node.js, npm, pnpm and nvm are not used** — if a command in this file starts with any
+of them, it is a bug in the file.
+
+```bash
+git clone https://github.com/SashaGoncharov19/dokploy-bun.git
+cd dokploy-bun
+bun install
+cp apps/dokploy/.env.example apps/dokploy/.env
+```
+
+Branch from `canary`. It is the default branch and where every pull request lands.
+`main` is the stable channel and is fast-forwarded to `canary` at release time, so you
+should never need to target it directly — only urgent `hotfix/` branches do. See
+[docs/BRANCHING.md](docs/BRANCHING.md).
+
+Then bring up Postgres, Traefik, the Docker network and the schema:
+
+```bash
+bun run dokploy:setup
+```
+
+This one talks to Docker for real — it initialises Swarm, creates the `dokploy-network`
+overlay, pulls and starts Traefik, and runs the migrations. Docker has to be running.
+
+In development it keeps its state in `apps/dokploy/.docker/`, not in `/etc/dokploy`;
+that switch is on `NODE_ENV` (`packages/server/src/constants/index.ts`). Worth knowing
+before you go looking for a config file in the wrong place, and worth remembering if you
+write a test that deletes a directory — the same path resolution decides whether the
+test wipes a fixture or your machine.
+
+Now start the dev server:
+
+```bash
+bun run dokploy:dev
+```
+
+Open http://localhost:3000.
+
+> [!NOTE]
+> This project uses Biome. If your editor is set to Prettier, either point it at Biome
+> or turn it off — otherwise your first save will reformat files you did not intend to
+> touch, which matters more here than in most repositories. See
+> [Fork discipline](#fork-discipline).
+
+## Development
+
+| Task | Command |
+|---|---|
+| dev server | `bun run dokploy:dev` |
+| typecheck everything | `bun run --filter '*' typecheck` |
+| build everything | `bun run build` |
+| format and lint | `bun run check` |
+| tests | `bun run test` |
+| regenerate the OpenAPI spec | `bun run generate:openapi` |
+| one workspace only | `bun run --filter <pkg> <script>` |
+
+**A green build does not mean the types are fine, and a green typecheck does not mean it
+builds.** `bun build` does not typecheck at all, and `tsc` resolves imports through
+tsconfig `paths` that the bundler does not use. Run both before you open a pull request.
+
+If you edited any `package.json`, run `bun install` and commit `bun.lock` in the same
+commit. CI installs with `--frozen-lockfile` and a stale lockfile fails it immediately.
+
+Adding a dependency with a native postinstall — anything in the `ssh2`, `sharp`,
+`better-sqlite3` family — means adding it to `trustedDependencies` in the root
+`package.json` in that same commit. Bun does not run install scripts for packages
+missing from that list, so the package installs cleanly and then fails at runtime.
+
+Never hand-write a Drizzle migration:
+
+```bash
+bun run --filter dokploy migration:generate
+```
+
+Never edit `openapi.json` by hand either; `bun run generate:openapi` produces it.
+
+### Resetting a password
+
+```bash
+bun run --filter dokploy build
+bun run --filter dokploy reset-password
+```
+
+The build is required — the script runs from `dist/`.
+
+### Testing webhooks locally
+
+```bash
+bunx localtunnel --port 3000
+```
+
+### Deploying an app from your dev instance
+
+Nixpacks, Railpack and Buildpacks are separate binaries. Install whichever build method
+you plan to exercise:
+
+```bash
+# Nixpacks
+curl -sSL https://nixpacks.com/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+
+# Railpack
+curl -sSL https://railpack.com/install.sh | sh
+
+# Buildpacks
+curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.39.1/pack-v0.39.1-linux.tgz" \
+  | tar -C /usr/local/bin/ --no-same-owner -xzv pack
+```
+
+If Docker gives you permission errors:
+
+```bash
+sudo chown -R $(whoami) ~/.docker
+```
+
+## Tests
+
+```bash
+bun run test
+```
+
+That runs **two** runners, and the split is deliberate rather than accidental: most
+directories have been ported to `bun test`, and the rest are still on vitest while the
+migration finishes.
+
+- The ported directories are listed in `test:bun` in `apps/dokploy/package.json`.
+- `__test__/vitest.config.ts` excludes exactly those directories.
+
+The two lists must stay complementary. Porting a directory means moving it from one to
+the other — moving it out of the vitest exclude list without adding it to `test:bun`
+makes the tests silently stop running in both.
+
+Write new tests for `bun test`, importing from `bun:test`. Leave existing vitest tests
+alone unless you are deliberately porting that directory, and if you are, read the
+porting rules in [CLAUDE.md](CLAUDE.md#tests) first — `vi.mock` → `mock.module` is not
+a rename, and the four differences that bite are all written down there.
+
+Some tests in `__test__/deploy` clone real repositories and drive a real Docker Swarm.
+They fail on a machine with no network access or an uninitialised Swarm; that is the
+environment, not your change.
+
+**Test what you changed by breaking it.** A test that passes against deliberately broken
+source proves nothing. This applies with particular force to ported tests, where a mock
+that quietly stopped applying looks exactly like a test that passes.
+
+## Fork discipline
+
+This is the part that is specific to this repository, and the part most likely to get a
+pull request sent back.
+
+Upstream still ships releases and we still merge them. Every line changed in a file
+upstream also maintains is a merge conflict in every future sync — permanently. So:
+
+- **No repo-wide renames.** 590 files mention "dokploy". Renaming them makes every
+  future upstream merge conflict in every file touched.
+- **No reformatting a file you are not otherwise changing.** A whitespace-only diff is
+  invisible in review and fatal to `git merge`.
+- **Diverge in files we own** rather than editing upstream logic in place. Prefer
+  changing one constant or one export over rewriting a function.
+- **Never push to the `upstream` remote.** Its push URL is set to `DISABLED` on purpose.
+
+The full reasoning, including which kinds of divergence are worth their merge cost, is
+in [docs/FORK-STRATEGY.md](docs/FORK-STRATEGY.md). The conventions for day-to-day work
+are in [CLAUDE.md](CLAUDE.md).
+
+## Commits and branches
+
+Branch names follow [docs/BRANCHING.md](docs/BRANCHING.md): `<type>/<slug>`, lowercase
+kebab-case, e.g. `feat/wildcard-domains` or `fix/2451-terminal-resize`.
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```
 <type>[optional scope]: <description>
 
 [optional body]
-
-[optional footer(s)]
 ```
 
-#### Type
-
-Must be one of the following:
-
-- **feat**: A new feature
-- **fix**: A bug fix
-- **docs**: Documentation only changes
-- **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
-- **refactor**: A code change that neither fixes a bug nor adds a feature
-- **perf**: A code change that improves performance
-- **test**: Adding missing tests or correcting existing tests
-- **build**: Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm)
-- **ci**: Changes to our CI configuration files and scripts (example scopes: Travis, Circle, BrowserStack, SauceLabs)
-- **chore**: Other changes that don't modify `src` or `test` files
-- **revert**: Reverts a previous commit
-
-Example:
+`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`,
+`revert` — matching the branch type.
 
 ```
-feat: add new feature
+feat: add wildcard domain support
+fix(terminal): sync PTY size with frontend
+chore(deps): bump bun to 1.4.0
 ```
 
-## Setup
+Pull requests are squash-merged, so the **pull request title and description** become
+the commit message on `canary`. Write them as the real explanation of the change;
+individual commit messages on your branch will not survive the merge.
 
-Before you start, please make the clone based on the `canary` branch, since the `main` branch is the source of truth and should always reflect the latest stable release, also the PRs will be merged to the `canary` branch.
+## Pull requests
 
-We use Node v24.4.0 and recommend this specific version. If you have nvm installed, you can run `nvm install 24.4.0 && nvm use` in the root directory.
+- Target `canary`.
+- One coherent change per pull request. Splitting an unrelated cleanup into its own PR
+  costs you a minute and saves the reviewer far more.
+- **Test your own change before submitting.** Say in the description what you ran and
+  what you observed. Untested pull requests are rejected — not to be unwelcoming, but
+  because verifying someone else's unverified change is the most expensive thing a
+  reviewer can be asked to do.
+- Include a screenshot or a short recording for anything user-visible.
+- Link the issue it closes (`Closes #123`).
+- Say what you measured, if the change claims to be faster or smaller. This fork's whole
+  argument is evidence; a performance claim without a number cannot be reviewed.
+- Avoid pull requests that are only whitespace, IDE formatting, or unused-variable
+  removal. In a fork those are not free — see [Fork discipline](#fork-discipline).
 
-```bash
-git clone https://github.com/dokploy/dokploy.git
-cd dokploy
-pnpm install
-cp apps/dokploy/.env.example apps/dokploy/.env
-```
-
-## Requirements
-
-- [Docker](/GUIDES.md#docker)
-
-### Setup
-
-Run the command that will spin up all the required services and files.
-
-```bash
-pnpm run dokploy:setup
-```
-
-Run this script
-
-```bash
-pnpm run server:script
-```
-
-Now run the development server.
-
-```bash
-pnpm run dokploy:dev
-```
-
-Go to http://localhost:3000 to see the development server
-
-> [!NOTE]
-> This project uses Biome. If your editor is configured to use another formatter such as Prettier, it's recommended to either change it to use Biome or turn it off.
-
-## Build
-
-```bash
-pnpm run dokploy:build
-```
-
-## Docker
-
-To build the docker image first run commands to copy .env files
-
-```bash
-cp apps/dokploy/.env.production.example .env.production
-cp apps/dokploy/.env.production.example apps/dokploy/.env.production
-```
-
-then run build command
-
-```bash
-pnpm run docker:build
-```
-
-To push the docker image
-
-```bash
-pnpm run docker:push
-```
-
-## Password Reset
-
-In the case you lost your password, you can reset it using the following command
-
-```bash
-pnpm run reset-password
-```
-
-If you want to test the webhooks on development mode using localtunnel, make sure to install [`localtunnel`](https://localtunnel.app/)
-
-```bash
-pnpm dlx localtunnel --port 3000
-```
-
-If you run into permission issues of docker run the following command
-
-```bash
-sudo chown -R USERNAME dokploy or sudo chown -R $(whoami) ~/.docker
-```
-
-## Application deploy
-
-In case you want to deploy the application on your machine and you selected nixpacks or buildpacks, you need to install first.
-
-```bash
-# Install Nixpacks
-curl -sSL https://nixpacks.com/install.sh -o install.sh \
-    && chmod +x install.sh \
-    && ./install.sh
-```
-
-```bash
-# Install Railpack
-curl -sSL https://railpack.com/install.sh | sh
-```
-
-```bash
-# Install Buildpacks
-curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.39.1/pack-v0.39.1-linux.tgz" | tar -C /usr/local/bin/ --no-same-owner -xzv pack
-```
-
-## Pull Request
-
-- The `canary` branch is the source of truth and should always reflect the latest stable release.
-- Create a new branch for each feature or bug fix.
-- Make sure to add tests for your changes.
-- Make sure to update the documentation for any changes Go to the [docs.dokploy.com](https://docs.dokploy.com) website to see the changes.
-- When creating a pull request, please provide a clear and concise description of the changes made.
-- If you include a video or screenshot, would be awesome so we can see the changes in action.
-- If your pull request fixes an open issue, please reference the issue in the pull request description.
-- Once your pull request is merged, you will be automatically added as a contributor to the project.
-
-### Important Considerations for Pull Requests
-
-- **Testing is Mandatory:** All Pull Requests **must be tested** by the PR author before submission. You must verify that your changes work as expected in a local development environment (see [Setup](#setup)). **Pull Requests that have not been tested by their creator will be rejected.** This policy keeps the PR history clean and values contributors who submit verified, working code. Untested PRs are often recognizable by disproportionately large or scattered changes for simple tasks—please test first.
-- **Focus and Scope:** Each Pull Request should ideally address a single, well-defined problem or introduce one new feature. This greatly facilitates review and reduces the chances of introducing unintended side effects.
-- **Avoid Unfocused Changes:** Please avoid submitting Pull Requests that contain only minor changes such as whitespace adjustments, IDE-generated formatting, or removal of unused variables, unless these are part of a larger, clearly defined refactor or a dedicated "cleanup" Pull Request that addresses a specific `good first issue` or maintenance task.
-- **Issue Association:** For any significant change, it's highly recommended to open an issue first to discuss the proposed solution with the community and maintainers. This ensures alignment and avoids duplicated effort. If your PR resolves an existing issue, please link it in the description (e.g., `Fixes #123`, `Closes #456`).
-- **Large Features:** Pull Requests that introduce very large or broad features **will not be accepted** unless the idea is first outlined and discussed in a GitHub issue. Large features should be designed together with the Dokploy team so the project stays coherent and moves in the same direction. Open an issue to propose and align on the design before implementing.
-
-Thank you for your contribution!
-
-## Templates
-
-To add a new template, go to `https://github.com/Dokploy/templates` repository and read the README.md file.
-
-### Recommendations
-
-- Use the same name of the folder as the id of the template.
-- The logo should be in the public folder.
-- If you want to show a domain in the UI, please add the `_HOST` suffix at the end of the variable name.
-- Test first on a vps or a server to make sure the template works.
-
-## Docs & Website
-
-To contribute to the Dokploy docs or website, please go to this [repository](https://github.com/Dokploy/website).
+Thank you for contributing.

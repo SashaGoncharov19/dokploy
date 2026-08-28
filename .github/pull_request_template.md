@@ -1,18 +1,32 @@
 ## What is this PR about?
 
-Please describe in a short paragraph what this PR is about.
+Describe in a short paragraph what this changes and why.
+
+This repository squash-merges, so this title and description become the commit message
+on `canary`. Write them as the real explanation of the change.
+
+## How did you test it?
+
+Say what you ran and what you observed. "Ran the test suite" is enough for a small
+change; a deployment or runtime change needs more than that.
 
 ## Checklist
 
-Before submitting this PR, please make sure that:
-
-- [ ] You created a dedicated branch based on the `canary` branch.
-- [ ] You have read the suggestions in the CONTRIBUTING.md file https://github.com/Dokploy/dokploy/blob/canary/CONTRIBUTING.md#pull-request
-- [ ] You have tested this PR in your local instance. If you have not tested it yet, please do so before submitting. This helps avoid wasting maintainers' time reviewing code that has not been verified by you.
+- [ ] Branched from `canary`, named per [BRANCHING.md](../docs/BRANCHING.md)
+      (`<type>/<slug>`)
+- [ ] Tested locally — see [CONTRIBUTING.md](../CONTRIBUTING.md#pull-requests)
+- [ ] `bun run --filter '*' typecheck` and `bun run build` both pass
+      (a green build says nothing about types, and vice versa)
+- [ ] `bun run test` passes
+- [ ] `bun.lock` committed, if any `package.json` changed
+- [ ] No mass rename, reformat, or drive-by cleanup of upstream files —
+      see [FORK-STRATEGY.md](../docs/FORK-STRATEGY.md)
 
 ## Issues related (if applicable)
 
-closes #123
+Closes #
 
-## Screenshots (if applicable)
+## Screenshots or measurements (if applicable)
 
+For user-visible changes, a screenshot or recording. For anything claiming to be faster
+or smaller, the numbers — a performance claim without a measurement cannot be reviewed.
