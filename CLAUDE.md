@@ -240,6 +240,10 @@ Read PLAN §12.3 before changing any of these three.
 ## Conventions
 
 - Biome, tabs, double quotes. Run `bun run check` before finishing.
+- Comments: only the "why" when something isn't obvious — workarounds, counterintuitive
+  decisions, constraints from an external API. Never restate what the code says, no
+  section dividers like `// --- Helpers ---`, no comments describing the change you
+  just made. (Upstream's rule too — their CLAUDE.md says the same.)
 - `apps/dokploy` is the **pages router**. Not app router. Do not add `app/` routes.
 - tRPC v11 + drizzle + better-auth. Routers live in `apps/dokploy/server/api/routers/`;
   `proprietary/` holds the formerly-licensed ones.
