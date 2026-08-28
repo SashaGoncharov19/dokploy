@@ -9,16 +9,20 @@ DOCKER_VERSION="28.5.0"
 # with DOKPLOY_IMAGE / DOKPLOY_REPO if you host your own build.
 DOKPLOY_REPO="${DOKPLOY_REPO:-SashaGoncharov19/dokploy-bun}"
 DOKPLOY_IMAGE="${DOKPLOY_IMAGE:-ghcr.io/sashagoncharov19/dokploy-bun}"
-# Used when no GitHub release can be detected. canary is what publish-images.yml
-# pushes today; this becomes "latest" once the fork cuts its first release.
+# Used when no GitHub release can be detected - see the fallback note in
+# detect_version for why this is the stable channel.
 DOKPLOY_FALLBACK_VERSION="${DOKPLOY_FALLBACK_VERSION:-latest}"
-DOKPLOY_INSTALL_URL="${DOKPLOY_INSTALL_URL:-https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh}"
+# Self-reference printed in guidance messages. main is the stable branch: the
+# branch only decides which copy of this script is fetched, never the installed
+# version (detect_version resolves releases/latest either way), but the advice
+# should not point people at a script text that is still in flight on canary.
+DOKPLOY_INSTALL_URL="${DOKPLOY_INSTALL_URL:-https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh}"
 
 # Detect version from environment variable or default to latest
-# Usage with curl (export first): export DOKPLOY_VERSION=canary && curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
-# Usage with curl (export first): export DOKPLOY_VERSION=latest && curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh
-# Usage with curl (bash -s): DOKPLOY_VERSION=canary bash -s < <(curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh)
-# Usage with curl (default): curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sh (detects latest stable version)
+# Usage with curl (export first): export DOKPLOY_VERSION=canary && curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh | sh
+# Usage with curl (export first): export DOKPLOY_VERSION=latest && curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh | sh
+# Usage with curl (bash -s): DOKPLOY_VERSION=canary bash -s < <(curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh)
+# Usage with curl (default): curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh | sh (detects latest stable version)
 # Usage with bash: DOKPLOY_VERSION=canary bash install.sh
 # Usage with bash: DOKPLOY_VERSION=latest bash install.sh
 # Usage with bash: bash install.sh (detects latest stable version)
@@ -306,7 +310,7 @@ install_dokploy() {
     if [ -z "$advertise_addr" ]; then
         echo "ERROR: We couldn't detect your server IP address."
         echo "Please set the ADVERTISE_ADDR environment variable manually."
-        echo "Example: curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/canary/install.sh | sudo ADVERTISE_ADDR=192.168.1.100 sh"
+        echo "Example: curl -sSL https://raw.githubusercontent.com/SashaGoncharov19/dokploy-bun/main/install.sh | sudo ADVERTISE_ADDR=192.168.1.100 sh"
         exit 1
     fi
     echo "Using advertise address: $advertise_addr"
