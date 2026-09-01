@@ -19,10 +19,12 @@ import * as execProcess from "@dokploy/server/utils/process/execAsync";
 const actualExecProcess = { ...execProcess };
 
 const execAsyncRemoteMock = jest.fn();
+const writeFileRemoteMock = jest.fn();
 
 mock.module("@dokploy/server/utils/process/execAsync", () => ({
 	...actualExecProcess,
 	execAsyncRemote: execAsyncRemoteMock,
+	writeFileRemote: writeFileRemoteMock,
 }));
 
 const { writeAppTraefikConfig } = await import(
@@ -74,7 +76,7 @@ describe("writeAppTraefikConfig", () => {
 					routers: {
 						[`${appName}-router-1`]: {
 							rule: "Host(`x`)",
-							service: `${appName}-service-1`,
+							service: `${appName}-service`,
 						},
 					},
 					services: {},
@@ -102,7 +104,7 @@ describe("writeAppTraefikConfig", () => {
 	});
 
 	it("writes the remote file when routers/services are present", async () => {
-		execAsyncRemoteMock.mockResolvedValue({ stdout: "", stderr: "" });
+		writeFileRemoteMock.mockResolvedValue(undefined);
 
 		await writeAppTraefikConfig(
 			{
@@ -110,7 +112,7 @@ describe("writeAppTraefikConfig", () => {
 					routers: {
 						"with-domain-app-router-1": {
 							rule: "Host(`x`)",
-							service: "with-domain-app-service-1",
+							service: "with-domain-app-service",
 						},
 					},
 					services: {},
@@ -120,9 +122,12 @@ describe("writeAppTraefikConfig", () => {
 			"server-id",
 		);
 
-		expect(execAsyncRemoteMock).toHaveBeenCalledTimes(1);
-		const [, command] = execAsyncRemoteMock.mock.calls[0] ?? [];
-		expect(command).toMatch(/^echo /);
+		expect(writeFileRemoteMock).toHaveBeenCalledTimes(1);
+		const [serverId, remotePath, content] =
+			writeFileRemoteMock.mock.calls[0] ?? [];
+		expect(serverId).toBe("server-id");
+		expect(remotePath).toContain("with-domain-app.yml");
+		expect(content).toContain("with-domain-app-router-1");
 	});
 });
 
