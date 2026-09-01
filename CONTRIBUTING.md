@@ -119,6 +119,13 @@ bun run --filter dokploy build
 bun run --filter dokploy reset-password
 ```
 
+That resets the owner's password. To reset a specific user instead, pass their
+email; either way the new random password is printed to the console:
+
+```bash
+bun run --filter dokploy reset-password user@example.com
+```
+
 The build is required — the script runs from `dist/`.
 
 ### Testing webhooks locally
