@@ -27,16 +27,17 @@ import { and, eq } from "drizzle-orm";
 			userId = owner.userId;
 		}
 
-		const update = await db
+		const updated = await db
 			.update(account)
 			.set({
 				password: randomPassword.hashedPassword,
 			})
 			.where(
 				and(eq(account.userId, userId), eq(account.providerId, "credential")),
-			);
+			)
+			.returning({ id: account.id });
 
-		if (update.count > 0) {
+		if (updated.length > 0) {
 			console.log("Password reset successful");
 			console.log("New password: ", randomPassword.randomPassword);
 		} else {
