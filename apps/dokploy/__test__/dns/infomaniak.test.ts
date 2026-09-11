@@ -1,7 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, jest } from "bun:test";
 
-const mockFetch = vi.fn();
-global.fetch = mockFetch as typeof fetch;
+// bun test runs every file in one process, so the real fetch goes back at the
+// end - otherwise every later file that reaches the network gets this stub.
+const realFetch = global.fetch;
+const mockFetch = jest.fn();
+global.fetch = mockFetch as unknown as typeof fetch;
 
 import { infomaniakClient } from "@dokploy/server/utils/dns/infomaniak";
 
@@ -36,6 +39,10 @@ const lastBody = () => JSON.parse(lastCall()[1].body as string);
 
 beforeEach(() => {
 	mockFetch.mockReset();
+});
+
+afterAll(() => {
+	global.fetch = realFetch;
 });
 
 describe("infomaniakClient.listZones", () => {

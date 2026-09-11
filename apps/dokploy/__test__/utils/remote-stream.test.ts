@@ -1,13 +1,21 @@
+import { afterAll, describe, expect, it, jest, mock } from "bun:test";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import * as serverService from "@dokploy/server/services/server";
 
-vi.mock("@dokploy/server/services/server", () => ({
-	findServerById: vi.fn(),
+// Snapshot before mocking: `mock.module` is process-global and has no
+// `importActual`, so the restore at the bottom puts the original back.
+const actualServerService = { ...serverService };
+
+mock.module("@dokploy/server/services/server", () => ({
+	...actualServerService,
+	findServerById: jest.fn(),
 }));
 
-import { pipeBetweenServers } from "@dokploy/server/utils/process/remoteStream";
+const { pipeBetweenServers } = await import(
+	"@dokploy/server/utils/process/remoteStream"
+);
 
 describe("pipeBetweenServers", () => {
 	it("delivers a short source stream that ends before the target is ready", async () => {
@@ -57,4 +65,8 @@ describe("pipeBetweenServers", () => {
 			}),
 		).rejects.toThrow("source exited with code 2");
 	});
+});
+
+afterAll(() => {
+	mock.module("@dokploy/server/services/server", () => actualServerService);
 });

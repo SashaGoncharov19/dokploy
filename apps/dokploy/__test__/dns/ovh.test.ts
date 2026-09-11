@@ -1,8 +1,19 @@
+import {
+	afterAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	jest,
+	spyOn,
+} from "bun:test";
 import { createHash } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockFetch = vi.fn();
-global.fetch = mockFetch as typeof fetch;
+// bun test runs every file in one process, so the real fetch goes back at the
+// end - otherwise every later file that reaches the network gets this stub.
+const realFetch = global.fetch;
+const mockFetch = jest.fn();
+global.fetch = mockFetch as unknown as typeof fetch;
 
 import { ovhClient } from "@dokploy/server/utils/dns/ovh";
 
@@ -82,11 +93,17 @@ beforeEach(() => {
 	mockFetch.mockReset();
 });
 
+afterAll(() => {
+	global.fetch = realFetch;
+});
+
 describe("ovhClient request signing", () => {
 	it("signs the request with the API server clock, not the local one", async () => {
 		const { baseUrl, ...cfg } = freshConfig();
 		mockApi(ovhSuccess(["example.com"]));
-		vi.spyOn(Date, "now").mockReturnValue((SERVER_TIME - 120) * 1000);
+		const nowSpy = spyOn(Date, "now").mockReturnValue(
+			(SERVER_TIME - 120) * 1000,
+		);
 
 		await ovhClient.listZones(cfg);
 
@@ -104,13 +121,13 @@ describe("ovhClient request signing", () => {
 			.digest("hex");
 		expect(headers["X-Ovh-Signature"]).toBe(`$1$${expected}`);
 
-		vi.restoreAllMocks();
+		nowSpy.mockRestore();
 	});
 
 	it("signs a request body when one is sent", async () => {
 		const { baseUrl, ...cfg } = freshConfig();
 		mockApi(ovhSuccess([]), ovhSuccess({ id: 5 }), ovhSuccess(null));
-		vi.spyOn(Date, "now").mockReturnValue(SERVER_TIME * 1000);
+		const nowSpy = spyOn(Date, "now").mockReturnValue(SERVER_TIME * 1000);
 
 		await ovhClient.upsertRecord(cfg, {
 			zoneId: "example.com",
@@ -132,7 +149,7 @@ describe("ovhClient request signing", () => {
 			.digest("hex");
 		expect(headers["X-Ovh-Signature"]).toBe(`$1$${expected}`);
 
-		vi.restoreAllMocks();
+		nowSpy.mockRestore();
 	});
 });
 

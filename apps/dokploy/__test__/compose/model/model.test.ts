@@ -1,20 +1,25 @@
+import { afterAll, expect, jest, mock, test } from "bun:test";
 import type { Compose, ComposeSpecification } from "@dokploy/server";
-import {
-	addAppNameToPreventCollision,
-	addSuffixToAllProperties,
-} from "@dokploy/server";
-import { addDomainToCompose } from "@dokploy/server/utils/docker/domain";
-import { execAsyncRemote } from "@dokploy/server/utils/process/execAsync";
-import { expect, test, vi } from "vitest";
+import * as execProcess from "@dokploy/server/utils/process/execAsync";
 import { stringify } from "yaml";
 import composeSpec from "../../../components/shared/compose-spec.json";
 
-vi.mock("@dokploy/server/utils/process/execAsync", async (importOriginal) => ({
-	...(await importOriginal<
-		typeof import("@dokploy/server/utils/process/execAsync")
-	>()),
-	execAsyncRemote: vi.fn(),
+// Snapshot before mocking: `mock.module` is process-global and has no
+// `importActual`, so the restore at the bottom puts the original back.
+const actualExecProcess = { ...execProcess };
+const execAsyncRemoteMock = jest.fn();
+
+mock.module("@dokploy/server/utils/process/execAsync", () => ({
+	...actualExecProcess,
+	execAsyncRemote: execAsyncRemoteMock,
 }));
+
+const { addAppNameToPreventCollision, addSuffixToAllProperties } = await import(
+	"@dokploy/server"
+);
+const { addDomainToCompose } = await import(
+	"@dokploy/server/utils/docker/domain"
+);
 
 const modelCompose = {
 	services: {
@@ -101,7 +106,7 @@ test("raw remote compose conversion preserves models", async () => {
 		[],
 	);
 
-	expect(execAsyncRemote).not.toHaveBeenCalled();
+	expect(execAsyncRemoteMock).not.toHaveBeenCalled();
 	expect(converted?.models?.llm?.model).toBe("ai/smollm2");
 	expect(converted?.services?.app?.models).toEqual(["llm"]);
 	expect(converted?.services?.worker?.models).toEqual({
@@ -110,4 +115,11 @@ test("raw remote compose conversion preserves models", async () => {
 			model_var: "LLM_MODEL",
 		},
 	});
+});
+
+afterAll(() => {
+	mock.module(
+		"@dokploy/server/utils/process/execAsync",
+		() => actualExecProcess,
+	);
 });

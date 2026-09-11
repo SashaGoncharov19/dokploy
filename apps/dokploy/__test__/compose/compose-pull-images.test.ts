@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { createCommand } from "@dokploy/server/utils/builders/compose";
-import { describe, expect, it } from "vitest";
 
 const base = {
 	composeType: "docker-compose" as const,
