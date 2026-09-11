@@ -133,7 +133,7 @@ and logs, server terminal, deployment console, monitoring, drawer logs), registr
 the migration chain, and real workloads — a multi-service Compose stack and a Gitea
 instance, both deployed and serving.
 
-The test suite — 908 tests, 783 of them on `bun test` and 125 still on vitest — passes
+The test suite — 1,035 tests, 877 of them on `bun test` and 158 still on vitest — passes
 in CI on both runners.
 
 Known gaps are listed honestly in
