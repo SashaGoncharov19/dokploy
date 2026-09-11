@@ -108,6 +108,18 @@ export const pipeBetweenServers = async ({
 	});
 	from.stdout.pipe(to.stdin);
 
+	// When the target goes away first, pipe() pauses the source as the
+	// destination closes, and a child whose stdout is never read to EOF never
+	// emits 'close' - so from.exit would wait forever, and the kill below finds
+	// a process that has already exited. Let the rest of the source output run
+	// into nothing instead; the byte counter above still sees it.
+	const drainSource = () => {
+		from.stdout.unpipe(to.stdin);
+		from.stdout.resume();
+	};
+	to.stdin.once("close", drainSource);
+	to.stdin.once("error", drainSource);
+
 	const targetExit = to.exit.then((code) => {
 		if (code !== 0) from.close();
 		return code;
