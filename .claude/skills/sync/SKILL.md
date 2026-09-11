@@ -61,13 +61,15 @@ The tests fail with `ReferenceError: vi is not defined`.
 **After every merge that touches `__test__/`:**
 
 ```bash
-grep -rn "\bvi\.\|from \"vitest\"" apps/dokploy/__test__/{logs,registry,requests,api,cluster,templates,backups,services,utils,queues,drop,traefik,server,permissions,wss,dns,compose,git-provider,deploy} 2>/dev/null
+grep -rn --exclude=remote-stream.test.ts "\bvi\.\|from \"vitest\"" apps/dokploy/__test__/{logs,registry,requests,api,cluster,templates,backups,services,utils,queues,drop,traefik,server,permissions,wss,dns,compose,git-provider,deploy} 2>/dev/null
 ```
 
 Anything it prints in a ported directory is a silent breakage. Convert it:
 `vi.fn` → `jest.fn`, `vi.mock` → `mock.module`, `vi.clearAllMocks` →
 `jest.clearAllMocks`. `env` is the one directory still on vitest - `vi.*` there
-is correct.
+is correct - and `utils/remote-stream.test.ts` is the one file: `bun test` spins on
+tests that pipe one child process into another (see CLAUDE.md, Tests), so `utils`
+is listed per file in both runner lists. Do not port it.
 
 ## 5. Verify, then open the PR
 

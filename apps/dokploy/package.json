@@ -37,7 +37,7 @@
 		"docker:push:canary": "./docker/push.sh canary",
 		"version": "echo $(node -p \"require('./package.json').version\")",
 		"test": "bun run test:bun && bun run test:vitest",
-		"test:bun": "bun test __test__/logs __test__/registry __test__/requests __test__/api __test__/cluster __test__/templates __test__/backups __test__/services __test__/utils __test__/queues __test__/drop __test__/traefik __test__/server __test__/permissions __test__/wss __test__/dns __test__/compose __test__/git-provider __test__/deploy",
+		"test:bun": "bun test __test__/logs __test__/registry __test__/requests __test__/api __test__/cluster __test__/templates __test__/backups __test__/services __test__/utils/backups.test.ts __test__/utils/hostname-validation.test.ts __test__/utils/log-type.test.ts __test__/queues __test__/drop __test__/traefik __test__/server __test__/permissions __test__/wss __test__/dns __test__/compose __test__/git-provider __test__/deploy",
 		"test:vitest": "vitest --config __test__/vitest.config.ts",
 		"generate:openapi": "bun scripts/generate-openapi.ts",
 		"reset-onboarding": "bun scripts/reset-onboarding.ts"
