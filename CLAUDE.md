@@ -151,6 +151,13 @@ tests silently stop running in both.
 
 - New tests: write for `bun test`, importing from `bun:test`.
 - Existing tests: leave on vitest unless you are deliberately porting that directory.
+- Tests that pipe one child process into another stay on vitest. When such a
+  test's promise never settles - `pipeBetweenServers` did that before its
+  drain-on-target-close fix, whenever the target died first - `bun test` cannot
+  time it out: it spins at 100% CPU instead of failing (seen on 1.3.11, 1.3.14
+  and 1.4.2), and in CI that is a job stuck until the 6-hour limit. vitest fails
+  it in 5s. `__test__/utils/remote-stream.test.ts` is the case, which is why
+  `utils` is listed per file in `test:bun` and in the vitest `exclude`.
 
 Note that `bun test` will happily execute a file that imports from `"vitest"` — so a
 directory can appear ported when it is not. Rewrite the imports to `bun:test` as part

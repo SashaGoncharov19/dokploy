@@ -21,7 +21,7 @@ export const organizationRouter = createTRPCRouter({
 	create: protectedProcedure
 		.input(
 			z.object({
-				name: z.string(),
+				name: z.string().min(1),
 				logo: z.string().optional(),
 			}),
 		)
@@ -126,7 +126,7 @@ export const organizationRouter = createTRPCRouter({
 		.input(
 			z.object({
 				organizationId: z.string(),
-				name: z.string(),
+				name: z.string().min(1),
 				logo: z.string().optional(),
 				defaultRole: z.string().min(1).nullable().optional(),
 			}),

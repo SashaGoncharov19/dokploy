@@ -19,7 +19,13 @@ export default defineConfig({
 			"**/__test__/templates/**",
 			"**/__test__/backups/**",
 			"**/__test__/services/**",
-			"**/__test__/utils/**",
+			// utils is split per file: remote-stream stays here because when a
+			// piped-child test's promise never settles, `bun test` spins at 100%
+			// CPU instead of timing it out (Bun 1.3.11, 1.3.14 and 1.4.2 alike), so
+			// a regression would hang CI rather than fail it. vitest fails it in 5s.
+			"**/__test__/utils/backups.test.ts",
+			"**/__test__/utils/hostname-validation.test.ts",
+			"**/__test__/utils/log-type.test.ts",
 			"**/__test__/queues/**",
 			"**/__test__/drop/**",
 			"**/__test__/traefik/**",

@@ -1,6 +1,6 @@
 {
 	"name": "dokploy",
-	"version": "v0.30.4-bun.1",
+	"version": "v0.30.6-bun.1",
 	"private": true,
 	"license": "Apache-2.0",
 	"type": "module",
@@ -37,9 +37,10 @@
 		"docker:push:canary": "./docker/push.sh canary",
 		"version": "echo $(node -p \"require('./package.json').version\")",
 		"test": "bun run test:bun && bun run test:vitest",
-		"test:bun": "bun test __test__/logs __test__/registry __test__/requests __test__/api __test__/cluster __test__/templates __test__/backups __test__/services __test__/utils __test__/queues __test__/drop __test__/traefik __test__/server __test__/permissions __test__/wss __test__/dns __test__/compose __test__/git-provider __test__/deploy",
+		"test:bun": "bun test __test__/logs __test__/registry __test__/requests __test__/api __test__/cluster __test__/templates __test__/backups __test__/services __test__/utils/backups.test.ts __test__/utils/hostname-validation.test.ts __test__/utils/log-type.test.ts __test__/queues __test__/drop __test__/traefik __test__/server __test__/permissions __test__/wss __test__/dns __test__/compose __test__/git-provider __test__/deploy",
 		"test:vitest": "vitest --config __test__/vitest.config.ts",
-		"generate:openapi": "bun scripts/generate-openapi.ts"
+		"generate:openapi": "bun scripts/generate-openapi.ts",
+		"reset-onboarding": "bun scripts/reset-onboarding.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.44",
@@ -51,6 +52,7 @@
 		"@ai-sdk/openai-compatible": "^2.0.30",
 		"@aws-sdk/client-route-53": "^3.1108.0",
 		"@aws-sdk/client-secrets-manager": "^3.1108.0",
+		"@aws-sdk/client-ssm": "3.1108.0",
 		"@better-auth/api-key": "1.6.23",
 		"@better-auth/passkey": "1.6.23",
 		"@better-auth/scim": "1.6.23",
@@ -108,7 +110,7 @@
 		"lucide-react": "^0.469.0",
 		"micromatch": "4.0.8",
 		"nanoid": "3.3.11",
-		"next": "16.3.0",
+		"next": "16.3.4",
 		"next-themes": "^0.2.1",
 		"nextjs-toploader": "^3.9.17",
 		"node-os-utils": "2.0.1",
@@ -130,7 +132,7 @@
 		"resend": "^6.0.2",
 		"semver": "7.7.3",
 		"shadcn": "^4.11.0",
-		"shell-quote": "^1.8.1",
+		"shell-quote": "^1.8.4",
 		"slugify": "^1.6.6",
 		"sonner": "^1.7.4",
 		"ssh2": "~1.16.0",
@@ -175,7 +177,7 @@
 		"tailwindcss": "^4.3.1",
 		"typescript": "^7.0.2",
 		"vite-tsconfig-paths": "4.3.2",
-		"vitest": "^4.0.18"
+		"vitest": "^4.1.0"
 	},
 	"ct3aMetadata": {
 		"initVersion": "7.25.2"

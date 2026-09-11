@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM oven/bun:1.3.14-slim AS base
+FROM oven/bun:1.4.2-slim AS base
 
 FROM base AS build
 WORKDIR /usr/src/app

@@ -67,11 +67,15 @@ export const serverRouter = createTRPCRouter({
 					input,
 					ctx.session.activeOrganizationId,
 				);
-				await applyDockerCleanupSchedule(
-					project.serverId,
-					ctx.session.activeOrganizationId,
-					input.enableDockerCleanup,
-				);
+				try {
+					await applyDockerCleanupSchedule(
+						project.serverId,
+						ctx.session.activeOrganizationId,
+						input.enableDockerCleanup,
+					);
+				} catch (error) {
+					console.error("Failed to schedule docker cleanup:", error);
+				}
 				await audit(ctx, {
 					action: "create",
 					resourceType: "server",
@@ -80,6 +84,9 @@ export const serverRouter = createTRPCRouter({
 				});
 				return project;
 			} catch (error) {
+				if (error instanceof TRPCError) {
+					throw error;
+				}
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "Error creating the server",
