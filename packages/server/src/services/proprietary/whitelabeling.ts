@@ -8,7 +8,7 @@ export interface PublicWhitelabelingConfig {
 	loginLogoUrl: string | null;
 	faviconUrl: string | null;
 	customCss: string | null;
-	metaTitle: string | null;
+	ogImageUrl: string | null;
 	errorPageTitle: string | null;
 	errorPageDescription: string | null;
 	footerText: string | null;
@@ -18,20 +18,20 @@ export interface PublicWhitelabelingConfig {
  * Branding this fork ships with, so a fresh install identifies itself as the Bun
  * build without anyone configuring whitelabeling first.
  *
- * Only the fields the interface actually renders are set. appName is deliberately
- * left null: nothing outside the whitelabeling settings screen reads it, so
- * setting it would suggest an effect it does not have.
+ * Only the fields the interface actually renders are set. appName is what
+ * _document.tsx and the layouts put in the tab title and og:title, so it carries
+ * the branding the old metaTitle field used to.
  *
  * Anything an administrator saves overrides these, field by field.
  */
 export const DEFAULT_WHITELABELING = {
-	appName: null,
+	appName: "Dokploy Bun",
 	appDescription: "Dokploy running on Bun",
 	logoUrl: null,
 	loginLogoUrl: null,
 	faviconUrl: null,
 	customCss: null,
-	metaTitle: "Dokploy Bun",
+	ogImageUrl: null,
 	errorPageTitle: null,
 	errorPageDescription: null,
 	footerText: "Dokploy Bun",

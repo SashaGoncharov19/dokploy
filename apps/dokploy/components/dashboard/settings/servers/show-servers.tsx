@@ -33,7 +33,6 @@ import { ShowServerActions } from "./actions/show-server-actions";
 import { DeleteServerModal } from "./delete-server-modal";
 import { HandleServers } from "./handle-servers";
 import { SetupServer } from "./setup-server";
-import { ShowHealthModal } from "./show-health-modal";
 import { ShowMonitoringModal } from "./show-monitoring-modal";
 import { WelcomeSubscription } from "./welcome-stripe/welcome-subscription";
 
@@ -50,7 +49,7 @@ export const ShowServers = () => {
 	return (
 		<div className="w-full">
 			{query?.success && isCloud && <WelcomeSubscription />}
-			<Card className="h-full  p-2.5 rounded-xl  max-w-5xl mx-auto">
+			<Card className="h-full  p-2.5 rounded-xl w-full">
 				<div className="rounded-xl bg-background shadow-md ">
 					<CardHeader className="">
 						<CardTitle className="text-xl flex flex-row gap-2">
@@ -116,10 +115,13 @@ export const ShowServers = () => {
 																className="relative hover:shadow-lg transition-shadow flex flex-col bg-transparent"
 															>
 																<CardHeader className="pb-3">
-																	<div className="flex items-start justify-between gap-2">
+																	<div className="flex items-start justify-between gap-2 min-w-0">
 																		<div className="flex min-w-0 items-center gap-2">
 																			<ServerIcon className="size-5 shrink-0 text-muted-foreground" />
-																			<CardTitle className="text-lg wrap-break-word min-w-0">
+																			<CardTitle
+																				className="text-lg truncate min-w-0"
+																				title={server.name}
+																			>
 																				{server.name}
 																			</CardTitle>
 																		</div>
@@ -318,24 +320,6 @@ export const ShowServers = () => {
 																							</TooltipTrigger>
 																							<TooltipContent>
 																								<p>Monitoring</p>
-																							</TooltipContent>
-																						</Tooltip>
-																					)}
-
-																				{permissions?.docker.read &&
-																					permissions?.server.read &&
-																					server.sshKeyId &&
-																					!isBuildServer && (
-																						<Tooltip>
-																							<TooltipTrigger asChild>
-																								<div>
-																									<ShowHealthModal
-																										serverId={server.serverId}
-																									/>
-																								</div>
-																							</TooltipTrigger>
-																							<TooltipContent>
-																								<p>Health</p>
 																							</TooltipContent>
 																						</Tooltip>
 																					)}

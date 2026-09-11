@@ -4,6 +4,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "PORT=4000 bun --watch src/index.ts",
+		"dev:inngest": "bunx --bun inngest-cli@1.9.0 dev -u http://localhost:4000/api/inngest --no-discovery",
 		"build": "rm -rf dist && bun build ./src/index.ts --target=bun --outdir=dist --minify --sourcemap",
 		"start": "bun dist/index.js",
 		"typecheck": "tsc --noEmit"

@@ -14,7 +14,9 @@ jobs:
       matrix:
         job: [build, test, typecheck]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14

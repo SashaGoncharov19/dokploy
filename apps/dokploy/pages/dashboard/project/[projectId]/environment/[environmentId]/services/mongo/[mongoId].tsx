@@ -38,6 +38,7 @@ const ContainerPaidMonitoring = dynamic(
 );
 
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
+import { TransferService } from "@/components/dashboard/shared/transfer-service";
 import { MongodbIcon } from "@/components/icons/data-tools-icons";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
@@ -173,6 +174,13 @@ const Mongo = (
 								<div className="flex flex-row gap-2 justify-end">
 									{permissions?.service.create && (
 										<UpdateMongo mongoId={mongoId} />
+									)}
+									{permissions?.service.create && (
+										<TransferService
+											id={mongoId}
+											type="mongo"
+											serverId={data?.serverId}
+										/>
 									)}
 									{permissions?.service.delete && (
 										<DeleteService id={mongoId} type="mongo" />

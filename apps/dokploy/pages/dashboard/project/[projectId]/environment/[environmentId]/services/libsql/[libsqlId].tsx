@@ -38,6 +38,7 @@ const ContainerPaidMonitoring = dynamic(
 );
 
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
+import { TransferService } from "@/components/dashboard/shared/transfer-service";
 import { LibsqlIcon } from "@/components/icons/data-tools-icons";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
@@ -160,6 +161,13 @@ const Libsql = (
 								</div>
 								<div className="flex flex-row gap-2 justify-end">
 									<UpdateLibsql libsqlId={libsqlId} />
+									{(auth?.role === "owner" || auth?.canCreateServices) && (
+										<TransferService
+											id={libsqlId}
+											type="libsql"
+											serverId={data?.serverId}
+										/>
+									)}
 									{(auth?.role === "owner" || auth?.canDeleteServices) && (
 										<DeleteService id={libsqlId} type="libsql" />
 									)}
