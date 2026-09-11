@@ -22,7 +22,8 @@ export default defineConfig({
 			// utils is split per file: remote-stream stays here because `bun test`
 			// spins at 100% CPU (about 1 run in 15) on a test that pipes one child
 			// process into another and awaits its close - reproduced with plain
-			// node:child_process and no project code, on Bun 1.3.11 and 1.3.14.
+			// node:child_process and no project code on Bun 1.3.11 and 1.3.14, and
+			// still 2 runs in 100 on 1.4.2.
 			// The same code under plain `bun` never hangs; it is the test runner.
 			"**/__test__/utils/backups.test.ts",
 			"**/__test__/utils/hostname-validation.test.ts",

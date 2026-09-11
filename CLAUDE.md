@@ -152,8 +152,9 @@ tests silently stop running in both.
 - New tests: write for `bun test`, importing from `bun:test`.
 - Existing tests: leave on vitest unless you are deliberately porting that directory.
 - Tests that pipe one child process into another and await its exit stay on
-  vitest: `bun test` spins at 100% CPU on them about one run in fifteen, on Bun
-  1.3.11 and 1.3.14 alike, with plain `node:child_process` and no project code.
+  vitest: `bun test` spins at 100% CPU on them - about one run in fifteen on Bun
+  1.3.11 and 1.3.14, two in a hundred on 1.4.2 - with plain `node:child_process`
+  and no project code.
   `__test__/utils/remote-stream.test.ts` is the case, which is why `utils` is
   listed per file in `test:bun` and in the vitest `exclude`.
 
